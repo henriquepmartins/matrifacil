@@ -15,19 +15,19 @@
     "build": "tsdown"
   },
   "devDependencies": {
-    "tsdown": "catalog:"
+    "tsdown": "0.15.6"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
-    "@orpc/server": "catalog:",
-    "@orpc/client": "catalog:",
-    "@orpc/openapi": "catalog:",
-    "@orpc/zod": "catalog:",
-    "next": "catalog:",
-    "dotenv": "catalog:",
-    "zod": "catalog:",
+    "@orpc/server": "^1.9.0",
+    "@orpc/client": "^1.9.0",
+    "@orpc/openapi": "^1.9.0",
+    "@orpc/zod": "^1.9.0",
+    "next": "15.5.4",
+    "dotenv": "^16.4.7",
+    "zod": "^4.1.11",
     "@matrifacil-/auth": "workspace:*",
     "@matrifacil-/db": "workspace:*"
   }

@@ -21,7 +21,7 @@
   "devDependencies": {
     "drizzle-kit": "^0.31.2",
     "@types/pg": "^8.11.11",
-    "tsdown": "catalog:"
+    "tsdown": "0.15.6"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -29,7 +29,7 @@
   "dependencies": {
     "drizzle-orm": "^0.44.2",
     "pg": "^8.14.1",
-    "dotenv": "catalog:",
-    "zod": "catalog:"
+    "dotenv": "^16.4.7",
+    "zod": "^4.1.11"
   }
 }
