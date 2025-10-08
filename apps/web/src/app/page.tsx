@@ -29,6 +29,8 @@ export default function Home() {
             className="w-full h-full"
             particleColor="#3B82F6"
           />
+          {/* Gradient fade-out overlay */}
+          <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-white dark:from-gray-950 via-white/60 dark:via-gray-950/60 to-transparent pointer-events-none"></div>
         </div>
 
         <div className="max-w-6xl mx-auto relative z-10">
