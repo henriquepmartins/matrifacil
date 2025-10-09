@@ -12,6 +12,7 @@
     "check-types": "turbo check-types",
     "dev:native": "turbo -F native dev",
     "dev:web": "turbo -F web dev",
+    "dev:server": "turbo -F server dev",
     "db:push": "turbo -F @matrifacil-/db db:push",
     "db:studio": "turbo -F @matrifacil-/db db:studio",
     "db:generate": "turbo -F @matrifacil-/db db:generate",
@@ -19,9 +20,11 @@
   },
   "dependencies": {
     "dotenv": "^16.4.7",
+    "express": "^5.1.0",
     "zod": "^4.1.11"
   },
   "devDependencies": {
+    "@types/express": "^5.0.3",
     "@types/node": "^22.13.11",
     "shadcn": "^3.4.0",
     "tsdown": "0.15.6",

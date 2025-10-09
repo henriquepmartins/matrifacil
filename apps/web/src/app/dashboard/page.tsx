@@ -1,22 +1,28 @@
-import { redirect } from "next/navigation";
+"use client";
+
 import Dashboard from "./dashboard";
-import { headers } from "next/headers";
-import { auth } from "@matrifacil-/auth";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import Loader from "@/components/loader";
 
-export default async function DashboardPage() {
-	const session = await auth.api.getSession({
-		headers: await headers(),
-	});
+export default function DashboardPage() {
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
 
-	if (!session?.user) {
-		redirect("/login");
-	}
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.push("/login");
+    }
+  }, [user, isLoading, router]);
 
-	return (
-		<div>
-			<h1>Dashboard</h1>
-			<p>Welcome {session.user.name}</p>
-			<Dashboard session={session} />
-		</div>
-	);
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  return <Dashboard />;
 }

@@ -1,4 +1,6 @@
-import { authClient } from "@/lib/auth-client";
+"use client";
+
+import { useAuth } from "@/lib/hooks/useAuth";
 import { useForm } from "@tanstack/react-form";
 import { toast } from "sonner";
 import z from "zod";
@@ -14,7 +16,7 @@ export default function SignInForm({
   onSwitchToSignUp: () => void;
 }) {
   const router = useRouter();
-  const { isPending } = authClient.useSession();
+  const { signIn, isLoading } = useAuth();
 
   const form = useForm({
     defaultValues: {
@@ -22,31 +24,23 @@ export default function SignInForm({
       password: "",
     },
     onSubmit: async ({ value }) => {
-      await authClient.signIn.email(
-        {
-          email: value.email,
-          password: value.password,
-        },
-        {
-          onSuccess: () => {
-            router.push("/dashboard");
-            toast.success("Login realizado com sucesso");
-          },
-          onError: (error) => {
-            toast.error(error.error.message || error.error.statusText);
-          },
-        }
-      );
+      try {
+        await signIn(value.email, value.password);
+        router.push("/dashboard");
+        toast.success("Login realizado com sucesso");
+      } catch (error: any) {
+        toast.error(error?.message || "Erro ao fazer login");
+      }
     },
     validators: {
       onSubmit: z.object({
-        email: z.email("E-mail inválido"),
+        email: z.string().email("E-mail inválido"),
         password: z.string().min(8, "A senha deve ter pelo menos 8 caracteres"),
       }),
     },
   });
 
-  if (isPending) {
+  if (isLoading) {
     return <Loader />;
   }
 

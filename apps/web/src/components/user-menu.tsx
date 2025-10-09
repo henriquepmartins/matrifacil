@@ -1,3 +1,5 @@
+"use client";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -6,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { authClient } from "@/lib/auth-client";
+import { useAuth } from "@/lib/hooks/useAuth";
 import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
 import { useRouter } from "next/navigation";
@@ -14,13 +16,13 @@ import Link from "next/link";
 
 export default function UserMenu() {
   const router = useRouter();
-  const { data: session, isPending } = authClient.useSession();
+  const { user, isLoading, signOut } = useAuth();
 
-  if (isPending) {
+  if (isLoading) {
     return <Skeleton className="h-10 w-10 rounded-full" />;
   }
 
-  if (!session) {
+  if (!user) {
     return (
       <Button variant="outline" asChild>
         <Link href="/login">Entrar</Link>
@@ -29,11 +31,11 @@ export default function UserMenu() {
   }
 
   // Get first letter of name, capitalized
-  const firstLetter = session.user.name?.charAt(0).toUpperCase() || "U";
+  const firstLetter = user.name?.charAt(0).toUpperCase() || "U";
 
   // Capitalize first letter of each word in name
   const capitalizedName =
-    session.user.name
+    user.name
       ?.split(" ")
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(" ") || "User";
@@ -55,7 +57,7 @@ export default function UserMenu() {
               {capitalizedName}
             </p>
             <p className="text-xs leading-none text-muted-foreground">
-              {session.user.email}
+              {user.email}
             </p>
           </div>
         </DropdownMenuLabel>
@@ -63,14 +65,9 @@ export default function UserMenu() {
         <DropdownMenuItem
           variant="destructive"
           className="cursor-pointer"
-          onClick={() => {
-            authClient.signOut({
-              fetchOptions: {
-                onSuccess: () => {
-                  router.push("/");
-                },
-              },
-            });
+          onClick={async () => {
+            await signOut();
+            router.push("/");
           }}
         >
           Sair

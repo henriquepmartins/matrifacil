@@ -1,4 +1,6 @@
-import { authClient } from "@/lib/auth-client";
+"use client";
+
+import { useAuth } from "@/lib/hooks/useAuth";
 import { useForm } from "@tanstack/react-form";
 import { toast } from "sonner";
 import z from "zod";
@@ -14,7 +16,7 @@ export default function SignUpForm({
   onSwitchToSignIn: () => void;
 }) {
   const router = useRouter();
-  const { isPending } = authClient.useSession();
+  const { signUp, isLoading } = useAuth();
 
   const form = useForm({
     defaultValues: {
@@ -23,33 +25,24 @@ export default function SignUpForm({
       name: "",
     },
     onSubmit: async ({ value }) => {
-      await authClient.signUp.email(
-        {
-          email: value.email,
-          password: value.password,
-          name: value.name,
-        },
-        {
-          onSuccess: () => {
-            router.push("/dashboard");
-            toast.success("Cadastro realizado com sucesso");
-          },
-          onError: (error) => {
-            toast.error(error.error.message || error.error.statusText);
-          },
-        }
-      );
+      try {
+        await signUp(value.name, value.email, value.password);
+        router.push("/dashboard");
+        toast.success("Cadastro realizado com sucesso");
+      } catch (error: any) {
+        toast.error(error?.message || "Erro ao cadastrar");
+      }
     },
     validators: {
       onSubmit: z.object({
         name: z.string().min(2, "O nome deve ter pelo menos 2 caracteres"),
-        email: z.email("E-mail inválido"),
+        email: z.string().email("E-mail inválido"),
         password: z.string().min(8, "A senha deve ter pelo menos 8 caracteres"),
       }),
     },
   });
 
-  if (isPending) {
+  if (isLoading) {
     return <Loader />;
   }
 
