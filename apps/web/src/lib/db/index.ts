@@ -4,4 +4,10 @@ export type {
   CachedSession,
   SyncQueueItem,
   SyncMetadata,
+  CachedAluno,
+  CachedResponsavel,
+  CachedTurma,
+  CachedMatricula,
+  CachedDocumento,
+  CachedPendencia,
 } from "./schema";

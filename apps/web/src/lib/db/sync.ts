@@ -40,11 +40,11 @@ export async function syncPendingOperations(): Promise<{
     return { success: 0, failed: 0 };
   }
 
-  const pendingItems = await db.syncQueue
-    .where("synced")
-    .equals(false)
-    .and((item) => item.retries < MAX_RETRIES)
-    .toArray();
+  // Busca todos os itens e filtra no JavaScript para evitar problemas com boolean no IndexedDB
+  const allItems = await db.syncQueue.toArray();
+  const pendingItems = allItems.filter(
+    (item) => !item.synced && item.retries < MAX_RETRIES
+  );
 
   if (pendingItems.length === 0) {
     return { success: 0, failed: 0 };
@@ -154,11 +154,11 @@ export async function cleanupSyncQueue(daysOld = 7): Promise<number> {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - daysOld);
 
-  const oldItems = await db.syncQueue
-    .where("synced")
-    .equals(true)
-    .and((item) => item.timestamp < cutoffDate)
-    .toArray();
+  // Busca todos os itens e filtra no JavaScript para evitar problemas com boolean no IndexedDB
+  const allItems = await db.syncQueue.toArray();
+  const oldItems = allItems.filter(
+    (item) => item.synced && item.timestamp < cutoffDate
+  );
 
   if (oldItems.length > 0) {
     await db.syncQueue.bulkDelete(oldItems.map((item) => item.id!));
@@ -175,12 +175,13 @@ export async function cleanupSyncQueue(daysOld = 7): Promise<number> {
  */
 export async function getSyncQueueStats() {
   const total = await db.syncQueue.count();
-  const pending = await db.syncQueue.where("synced").equals(false).count();
-  const failed = await db.syncQueue
-    .where("synced")
-    .equals(false)
-    .and((item) => item.retries >= MAX_RETRIES)
-    .count();
+
+  // Busca todos os itens e filtra no JavaScript para evitar problemas com boolean no IndexedDB
+  const allItems = await db.syncQueue.toArray();
+  const pending = allItems.filter((item) => !item.synced).length;
+  const failed = allItems.filter(
+    (item) => !item.synced && item.retries >= MAX_RETRIES
+  ).length;
 
   return {
     total,

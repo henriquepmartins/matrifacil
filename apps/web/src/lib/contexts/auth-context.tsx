@@ -92,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Salva no IndexedDB
       const userData = {
         ...response.data.user,
+        role: response.data.user.role || "RECEPCAO",
         createdAt: new Date(response.data.user.createdAt || Date.now()),
         updatedAt: new Date(response.data.user.updatedAt || Date.now()),
       };
@@ -131,6 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Salva no IndexedDB
       const userData = {
         ...response.data.user,
+        role: response.data.user.role || "RECEPCAO",
         createdAt: new Date(response.data.user.createdAt || Date.now()),
         updatedAt: new Date(response.data.user.updatedAt || Date.now()),
       };
@@ -178,6 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const userData = {
         ...response.data.user,
+        role: response.data.user.role || "RECEPCAO",
         createdAt: new Date(response.data.user.createdAt || Date.now()),
         updatedAt: new Date(response.data.user.updatedAt || Date.now()),
       };

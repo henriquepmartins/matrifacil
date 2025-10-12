@@ -14,3 +14,7 @@ const pool = new Pool({
 });
 
 export const db = drizzle(pool);
+
+// Export schemas
+export * from "./schema/auth";
+export * from "./schema/matriculas";
