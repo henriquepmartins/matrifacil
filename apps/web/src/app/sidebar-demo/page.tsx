@@ -1,4 +1,5 @@
 import SidebarDemo from "@/components/sidebar-demo";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 export default function SidebarDemoPage() {
   return (
@@ -12,7 +13,9 @@ export default function SidebarDemoPage() {
           animations. Hover over the sidebar to see it expand, and move your
           mouse away to see it collapse.
         </p>
-        <SidebarDemo />
+        <SidebarProvider>
+          <SidebarDemo />
+        </SidebarProvider>
       </div>
     </div>
   );

@@ -171,22 +171,6 @@ const columns = [
       </Badge>
     ),
   },
-  {
-    key: "acoes" as const,
-    label: "Ações",
-    render: (value: any, item: any) => (
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm">
-          <Users className="h-4 w-4 mr-1" />
-          Alunos
-        </Button>
-        <Button variant="outline" size="sm">
-          <GraduationCap className="h-4 w-4 mr-1" />
-          Editar
-        </Button>
-      </div>
-    ),
-  },
 ];
 
 export default function TurmasPage() {
@@ -225,7 +209,7 @@ export default function TurmasPage() {
             </p>
           </div>
           <Button asChild>
-            <Link href="/dashboard/turmas/nova">
+            <Link href="/dashboard/pre-matriculas/nova">
               <Plus className="h-4 w-4 mr-2" />
               Nova Turma
             </Link>

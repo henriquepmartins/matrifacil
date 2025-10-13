@@ -33,7 +33,7 @@ export default function ProtectedRoute({
     }
 
     if (!isLoading && user && !hasPermission) {
-      router.push(redirectTo);
+      router.push(redirectTo as any);
     }
   }, [user, isLoading, hasPermission, router, redirectTo]);
 

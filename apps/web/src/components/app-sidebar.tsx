@@ -7,11 +7,21 @@ import {
   IconUsers,
   IconFileText,
   IconChartBar,
+  IconChevronUp,
+  IconLogout,
+  IconUser,
 } from "@tabler/icons-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/lib/contexts/auth-context";
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -62,6 +72,27 @@ const items = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { user, isLoading, signOut } = useAuth();
+
+  // Função para obter as iniciais do nome do usuário
+  const getUserInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((word) => word.charAt(0))
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  // Função para obter o cargo do usuário em português
+  const getRoleLabel = (role: string) => {
+    const roleLabels = {
+      ADMIN: "Administrador",
+      COORDENACAO: "Coordenação",
+      RECEPCAO: "Recepção",
+    };
+    return roleLabels[role as keyof typeof roleLabels] || "Usuário";
+  };
 
   return (
     <Sidebar>
@@ -107,7 +138,7 @@ export function AppSidebar() {
                     isActive={pathname === item.url}
                     tooltip={item.title}
                   >
-                    <Link href={item.url}>
+                    <Link href={item.url as any}>
                       <item.icon className="size-4" />
                       <span>{item.title}</span>
                     </Link>
@@ -122,21 +153,74 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
-              <Link href="/dashboard/profile">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-                  <span className="text-sm font-medium">U</span>
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">Usuário</span>
-                  <span className="truncate text-xs">Perfil do usuário</span>
-                </div>
-              </Link>
-            </SidebarMenuButton>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton
+                  size="lg"
+                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                >
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                    {isLoading ? (
+                      <div className="h-4 w-4 animate-pulse rounded bg-white/50" />
+                    ) : user ? (
+                      <span className="text-sm font-medium">
+                        {getUserInitials(user.name)}
+                      </span>
+                    ) : (
+                      <span className="text-sm font-medium">?</span>
+                    )}
+                  </div>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    {isLoading ? (
+                      <>
+                        <div className="h-4 w-24 animate-pulse rounded bg-sidebar-accent/50" />
+                        <div className="h-3 w-16 animate-pulse rounded bg-sidebar-accent/50" />
+                      </>
+                    ) : user ? (
+                      <>
+                        <span className="truncate font-semibold">
+                          {user.name}
+                        </span>
+                        <span className="truncate text-xs">
+                          {getRoleLabel(user.role)}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="truncate font-semibold">
+                          Usuário não logado
+                        </span>
+                        <span className="truncate text-xs">
+                          Faça login para continuar
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  <IconChevronUp className="ml-auto size-4" />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                side="top"
+                className="w-[--radix-popper-anchor-width]"
+              >
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard">
+                    <IconUser className="mr-2 size-4" />
+                    <span>Perfil</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard">
+                    <IconSettings className="mr-2 size-4" />
+                    <span>Configurações</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => signOut()}>
+                  <IconLogout className="mr-2 size-4" />
+                  <span>Sair</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

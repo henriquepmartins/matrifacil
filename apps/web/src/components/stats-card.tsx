@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LucideIcon, TrendingUp, TrendingDown } from "lucide-react";
+import { type LucideIcon, TrendingUp, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface StatsCardProps {
@@ -29,22 +29,22 @@ export default function StatsCard({
 
   const sizeClasses = {
     sm: {
-      card: "p-4",
+      card: "p-3",
       title: "text-xs",
       value: "text-lg",
       icon: "h-3 w-3",
       trend: "text-xs",
     },
     md: {
-      card: "p-6",
-      title: "text-sm",
+      card: "p-4",
+      title: "text-xs",
       value: "text-2xl",
       icon: "h-4 w-4",
       trend: "text-xs",
     },
     lg: {
-      card: "p-8",
-      title: "text-base",
+      card: "p-6",
+      title: "text-sm",
       value: "text-3xl",
       icon: "h-6 w-6",
       trend: "text-sm",
@@ -61,7 +61,7 @@ export default function StatsCard({
         className
       )}
     >
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
         <CardTitle
           className={cn("font-medium text-muted-foreground", currentSize.title)}
         >
@@ -74,7 +74,7 @@ export default function StatsCard({
         {trend && (
           <div
             className={cn(
-              "flex items-center text-muted-foreground mt-2",
+              "flex items-center text-muted-foreground mt-1",
               currentSize.trend
             )}
           >

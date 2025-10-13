@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
+import { Sidebar } from "@/components/ui/sidebar";
 import {
   IconArrowLeft,
   IconBrandTabler,
@@ -49,34 +49,35 @@ export default function SidebarDemo() {
         "h-[60vh]" // for your use case, use `h-screen` instead of `h-[60vh]`
       )}
     >
-      <Sidebar open={open} setOpen={setOpen}>
-        <SidebarBody className="justify-between gap-10">
+      <Sidebar>
+        <div className="justify-between gap-10">
           <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
             {open ? <Logo /> : <LogoIcon />}
             <div className="mt-8 flex flex-col gap-2">
               {links.map((link, idx) => (
-                <SidebarLink key={idx} link={link} />
+                <div
+                  key={idx}
+                  className="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
+                >
+                  <div className="h-4 w-4 bg-neutral-300 rounded" />
+                  <span>{link.label}</span>
+                </div>
               ))}
             </div>
           </div>
           <div>
-            <SidebarLink
-              link={{
-                label: "Manu Arora",
-                href: "#",
-                icon: (
-                  <img
-                    src="https://assets.aceternity.com/manu.png"
-                    className="h-7 w-7 shrink-0 rounded-full"
-                    width={50}
-                    height={50}
-                    alt="Avatar"
-                  />
-                ),
-              }}
-            />
+            <div className="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors">
+              <img
+                src="https://assets.aceternity.com/manu.png"
+                className="h-7 w-7 shrink-0 rounded-full"
+                width={50}
+                height={50}
+                alt="Avatar"
+              />
+              <span>Manu Arora</span>
+            </div>
           </div>
-        </SidebarBody>
+        </div>
       </Sidebar>
       <Dashboard />
     </div>

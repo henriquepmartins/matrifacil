@@ -5,9 +5,9 @@ import {
   useContext,
   useState,
   useEffect,
-  ReactNode,
+  type ReactNode,
 } from "react";
-import { db, CachedUser } from "../db";
+import { db, type CachedUser } from "../db";
 import { apiClient } from "../api-client";
 
 interface AuthContextType {
@@ -87,21 +87,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
       });
 
-      console.log("✅ Login bem-sucedido:", response.data.user.email);
+      console.log("✅ Login bem-sucedido:", (response as any).data.user.email);
 
       // Salva no IndexedDB
       const userData = {
-        ...response.data.user,
-        role: response.data.user.role || "RECEPCAO",
-        createdAt: new Date(response.data.user.createdAt || Date.now()),
-        updatedAt: new Date(response.data.user.updatedAt || Date.now()),
+        ...(response as any).data.user,
+        role: (response as any).data.user.role || "RECEPCAO",
+        createdAt: new Date(
+          (response as any).data.user.createdAt || Date.now()
+        ),
+        updatedAt: new Date(
+          (response as any).data.user.updatedAt || Date.now()
+        ),
       };
 
       const sessionData = {
-        id: response.data.user.id,
-        userId: response.data.user.id,
-        token: response.data.token,
-        expiresAt: new Date(response.data.expiresAt),
+        id: (response as any).data.user.id,
+        userId: (response as any).data.user.id,
+        token: (response as any).data.token,
+        expiresAt: new Date((response as any).data.expiresAt),
         createdAt: new Date(),
       };
 
@@ -127,21 +131,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
       });
 
-      console.log("✅ Registro bem-sucedido:", response.data.user.email);
+      console.log(
+        "✅ Registro bem-sucedido:",
+        (response as any).data.user.email
+      );
 
       // Salva no IndexedDB
       const userData = {
-        ...response.data.user,
-        role: response.data.user.role || "RECEPCAO",
-        createdAt: new Date(response.data.user.createdAt || Date.now()),
-        updatedAt: new Date(response.data.user.updatedAt || Date.now()),
+        ...(response as any).data.user,
+        role: (response as any).data.user.role || "RECEPCAO",
+        createdAt: new Date(
+          (response as any).data.user.createdAt || Date.now()
+        ),
+        updatedAt: new Date(
+          (response as any).data.user.updatedAt || Date.now()
+        ),
       };
 
       const sessionData = {
-        id: response.data.user.id,
-        userId: response.data.user.id,
-        token: response.data.token,
-        expiresAt: new Date(response.data.expiresAt),
+        id: (response as any).data.user.id,
+        userId: (response as any).data.user.id,
+        token: (response as any).data.token,
+        expiresAt: new Date((response as any).data.expiresAt),
         createdAt: new Date(),
       };
 
@@ -179,10 +190,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await apiClient.get("/api/auth/session");
 
       const userData = {
-        ...response.data.user,
-        role: response.data.user.role || "RECEPCAO",
-        createdAt: new Date(response.data.user.createdAt || Date.now()),
-        updatedAt: new Date(response.data.user.updatedAt || Date.now()),
+        ...(response as any).data.user,
+        role: (response as any).data.user.role || "RECEPCAO",
+        createdAt: new Date(
+          (response as any).data.user.createdAt || Date.now()
+        ),
+        updatedAt: new Date(
+          (response as any).data.user.updatedAt || Date.now()
+        ),
       };
 
       await db.users.put(userData);

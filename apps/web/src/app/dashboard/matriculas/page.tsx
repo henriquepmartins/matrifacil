@@ -105,28 +105,6 @@ const columns = [
     label: "Data",
     sortable: true,
   },
-  {
-    key: "acoes" as const,
-    label: "Ações",
-    render: (value: any, item: any) => (
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm">
-          <Eye className="h-4 w-4 mr-1" />
-          Ver
-        </Button>
-        <Button variant="outline" size="sm">
-          <Edit className="h-4 w-4 mr-1" />
-          Editar
-        </Button>
-        {item.status === "pendente_doc" && (
-          <Button variant="outline" size="sm">
-            <FileText className="h-4 w-4 mr-1" />
-            Docs
-          </Button>
-        )}
-      </div>
-    ),
-  },
 ];
 
 export default function MatriculasPage() {
@@ -165,9 +143,9 @@ export default function MatriculasPage() {
           </p>
         </div>
         <Button asChild>
-          <Link href="/dashboard/matriculas/nova">
+          <Link href="/dashboard/pre-matriculas/nova">
             <Plus className="h-4 w-4 mr-2" />
-            Nova Matrícula
+            Nova Pré-Matrícula
           </Link>
         </Button>
       </div>

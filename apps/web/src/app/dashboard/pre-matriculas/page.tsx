@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,141 +14,132 @@ import {
 } from "@/components/ui/select";
 import DataTable from "@/components/data-table";
 import StatusBadge from "@/components/status-badge";
-import { Plus, Eye, Edit, FileText } from "lucide-react";
+import PreMatriculaEditDialog from "@/components/pre-matricula-edit-dialog";
+import { Plus, Eye, Edit, FileText, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 
-// Dados mock para demonstração
-const mockPreMatriculas = [
-  {
-    id: "1",
-    protocolo: "PRE-2024-001",
-    aluno: "João Silva Santos",
-    responsavel: "Maria Silva",
-    telefone: "(11) 99999-9999",
-    etapa: "maternal",
-    status: "pre" as const,
-    data: "2024-01-15",
-  },
-  {
-    id: "2",
-    protocolo: "PRE-2024-002",
-    aluno: "Ana Costa Lima",
-    responsavel: "Pedro Costa",
-    telefone: "(11) 88888-8888",
-    etapa: "pre_escola",
-    status: "pre" as const,
-    data: "2024-01-14",
-  },
-  {
-    id: "3",
-    protocolo: "PRE-2024-003",
-    aluno: "Carlos Oliveira",
-    responsavel: "Sandra Oliveira",
-    telefone: "(11) 77777-7777",
-    etapa: "bercario",
-    status: "pre" as const,
-    data: "2024-01-13",
-  },
-  {
-    id: "4",
-    protocolo: "PRE-2024-004",
-    aluno: "Mariana Ferreira",
-    responsavel: "Roberto Ferreira",
-    telefone: "(11) 66666-6666",
-    etapa: "fundamental",
-    status: "pre" as const,
-    data: "2024-01-12",
-  },
-  {
-    id: "5",
-    protocolo: "PRE-2024-005",
-    aluno: "Lucas Rodrigues",
-    responsavel: "Patricia Rodrigues",
-    telefone: "(11) 55555-5555",
-    etapa: "maternal",
-    status: "pre" as const,
-    data: "2024-01-11",
-  },
-];
-
-const columns = [
-  {
-    key: "protocolo" as const,
-    label: "Protocolo",
-    sortable: true,
-  },
-  {
-    key: "aluno" as const,
-    label: "Aluno",
-    sortable: true,
-  },
-  {
-    key: "responsavel" as const,
-    label: "Responsável",
-    sortable: true,
-  },
-  {
-    key: "telefone" as const,
-    label: "Telefone",
-  },
-  {
-    key: "etapa" as const,
-    label: "Etapa",
-    render: (value: string) => (
-      <span className="capitalize">{value.replace("_", " ")}</span>
-    ),
-  },
-  {
-    key: "status" as const,
-    label: "Status",
-    render: (value: string) => <StatusBadge status={value as any} />,
-  },
-  {
-    key: "data" as const,
-    label: "Data",
-    sortable: true,
-  },
-  {
-    key: "acoes" as const,
-    label: "Ações",
-    render: (value: any, item: any) => (
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm">
-          <Eye className="h-4 w-4 mr-1" />
-          Ver
-        </Button>
-        <Button variant="outline" size="sm">
-          <Edit className="h-4 w-4 mr-1" />
-          Editar
-        </Button>
-      </div>
-    ),
-  },
-];
+interface PreMatricula {
+  id: string;
+  protocoloLocal: string;
+  status: "pre" | "pendente_doc" | "completo" | "concluido";
+  dataMatricula: string | null;
+  observacoes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  aluno: {
+    id: string;
+    nome: string;
+    dataNascimento: string;
+    etapa: string;
+    necessidadesEspeciais: boolean;
+    observacoes: string | null;
+  };
+  responsavel: {
+    id: string;
+    nome: string;
+    cpf: string;
+    telefone: string;
+    endereco: string;
+    bairro: string;
+    email: string | null;
+    parentesco: string;
+    autorizadoRetirada: boolean;
+  };
+  turma?: {
+    id: string;
+    nome: string;
+    etapa: string;
+    turno: string;
+  } | null;
+}
 
 export default function PreMatriculasPage() {
+  const queryClient = useQueryClient();
   const [filtroStatus, setFiltroStatus] = useState<string>("todos");
   const [filtroEtapa, setFiltroEtapa] = useState<string>("todos");
+  const [editingPreMatricula, setEditingPreMatricula] =
+    useState<PreMatricula | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const { data: preMatriculas, isLoading } = useQuery({
     queryKey: ["pre-matriculas", filtroStatus, filtroEtapa],
     queryFn: async () => {
-      // Simular delay da API
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      const params = new URLSearchParams();
+      if (filtroStatus !== "todos") params.append("status", filtroStatus);
+      if (filtroEtapa !== "todos") params.append("etapa", filtroEtapa);
 
-      let filtered = [...mockPreMatriculas];
-
-      if (filtroStatus !== "todos") {
-        filtered = filtered.filter((item) => item.status === filtroStatus);
+      const response = await fetch(`/api/pre-matriculas?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error("Erro ao buscar pré-matrículas");
       }
-
-      if (filtroEtapa !== "todos") {
-        filtered = filtered.filter((item) => item.etapa === filtroEtapa);
-      }
-
-      return filtered;
+      const result = await response.json();
+      return result.data;
     },
   });
+
+  const deletePreMatriculaMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/pre-matriculas/${id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Erro ao deletar pré-matrícula");
+      }
+    },
+    onSuccess: () => {
+      toast.success("Pré-matrícula deletada com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["pre-matriculas"] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const handleEdit = (preMatricula: PreMatricula) => {
+    setEditingPreMatricula(preMatricula);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm("Tem certeza que deseja deletar esta pré-matrícula?")) {
+      deletePreMatriculaMutation.mutate(id);
+    }
+  };
+
+  const columns = [
+    {
+      key: "protocoloLocal" as const,
+      label: "Protocolo",
+      sortable: true,
+    },
+    {
+      key: "status" as const,
+      label: "Status",
+      render: (value: any, item: PreMatricula) => (
+        <StatusBadge status={item.status as any} />
+      ),
+    },
+    {
+      key: "createdAt" as const,
+      label: "Data",
+      sortable: true,
+      render: (value: any, item: PreMatricula) =>
+        new Date(item.createdAt).toLocaleDateString("pt-BR"),
+    },
+  ];
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Carregando pré-matrículas...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -227,6 +218,13 @@ export default function PreMatriculasPage() {
           />
         </CardContent>
       </Card>
+
+      {/* Dialog de Edição */}
+      <PreMatriculaEditDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        preMatricula={editingPreMatricula}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import {
   Home,
   FileText,
@@ -17,14 +18,7 @@ import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { usePermissions } from "@/lib/hooks/usePermissions";
-import {
-  Sidebar,
-  SidebarProvider,
-  DesktopSidebar,
-  MobileSidebar,
-  SidebarLink,
-  useSidebar,
-} from "@/components/ui/sidebar";
+import { Sidebar, SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 
 interface NavItem {
   title: string;
@@ -134,15 +128,17 @@ export default function AppSidebarAceternity() {
             </h3>
             <div className="space-y-1">
               {links.map((link) => (
-                <SidebarLink
+                <Link
                   key={link.href}
-                  link={link}
+                  href={link.href as any}
                   className={`flex items-center gap-2 px-2 py-2 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors ${
                     pathname === link.href
                       ? "bg-neutral-100 dark:bg-neutral-700"
                       : ""
                   }`}
-                />
+                >
+                  {link.label}
+                </Link>
               ))}
             </div>
           </div>

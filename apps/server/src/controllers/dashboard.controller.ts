@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
+import { preMatriculaService } from "../services/pre-matricula.service.js";
+import { AppError } from "../middlewares/error.middleware.js";
 
-// Dados mock para demonstração
+// Dados mock para demonstração (mantidos para outras funcionalidades)
 const mockStats = {
   totalMatriculas: 156,
   preMatriculas: 23,
@@ -48,39 +50,6 @@ const mockMatriculasRecentes = [
     responsavel: "Patricia Rodrigues",
     status: "completo",
     data: "2024-01-11",
-  },
-];
-
-const mockPreMatriculas = [
-  {
-    id: "1",
-    protocolo: "PRE-2024-001",
-    aluno: "João Silva Santos",
-    responsavel: "Maria Silva",
-    telefone: "(11) 99999-9999",
-    etapa: "maternal",
-    status: "pre",
-    data: "2024-01-15",
-  },
-  {
-    id: "2",
-    protocolo: "PRE-2024-002",
-    aluno: "Ana Costa Lima",
-    responsavel: "Pedro Costa",
-    telefone: "(11) 88888-8888",
-    etapa: "pre_escola",
-    status: "pre",
-    data: "2024-01-14",
-  },
-  {
-    id: "3",
-    protocolo: "PRE-2024-003",
-    aluno: "Carlos Oliveira",
-    responsavel: "Sandra Oliveira",
-    telefone: "(11) 77777-7777",
-    etapa: "bercario",
-    status: "pre",
-    data: "2024-01-13",
   },
 ];
 
@@ -195,42 +164,170 @@ export const getMatriculas = async (req: Request, res: Response) => {
 
 export const getPreMatriculas = async (req: Request, res: Response) => {
   try {
-    const { status, etapa, search } = req.query;
+    const { status, etapa, search, limit, offset } = req.query;
 
-    // Simular delay da API
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    const filters = {
+      status: status as string,
+      etapa: etapa as string,
+      search: search as string,
+      limit: limit ? parseInt(limit as string) : undefined,
+      offset: offset ? parseInt(offset as string) : undefined,
+    };
 
-    let filtered = [...mockPreMatriculas];
-
-    if (status && status !== "todos") {
-      filtered = filtered.filter((item) => item.status === status);
-    }
-
-    if (etapa && etapa !== "todos") {
-      filtered = filtered.filter((item) => item.etapa === etapa);
-    }
-
-    if (search) {
-      filtered = filtered.filter(
-        (item) =>
-          item.aluno.toLowerCase().includes(search.toString().toLowerCase()) ||
-          item.responsavel
-            .toLowerCase()
-            .includes(search.toString().toLowerCase())
-      );
-    }
+    const result = await preMatriculaService.getPreMatriculas(filters);
 
     res.json({
       success: true,
-      data: filtered,
-      total: filtered.length,
+      data: result.data,
+      total: result.total,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Erro ao buscar pré-matrículas",
-      error: error instanceof Error ? error.message : "Erro desconhecido",
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "Erro ao buscar pré-matrículas",
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
+  }
+};
+
+export const createPreMatricula = async (req: Request, res: Response) => {
+  try {
+    const preMatricula = await preMatriculaService.createPreMatricula(req.body);
+
+    res.status(201).json({
+      success: true,
+      data: preMatricula,
+      message: "Pré-matrícula criada com sucesso",
     });
+  } catch (error) {
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "Erro ao criar pré-matrícula",
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
+  }
+};
+
+export const getPreMatriculaById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const preMatricula = await preMatriculaService.getPreMatriculaById(id);
+
+    res.json({
+      success: true,
+      data: preMatricula,
+    });
+  } catch (error) {
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "Erro ao buscar pré-matrícula",
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
+  }
+};
+
+export const updatePreMatricula = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const preMatricula = await preMatriculaService.updatePreMatricula(
+      id,
+      req.body
+    );
+
+    res.json({
+      success: true,
+      data: preMatricula,
+      message: "Pré-matrícula atualizada com sucesso",
+    });
+  } catch (error) {
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "Erro ao atualizar pré-matrícula",
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
+  }
+};
+
+export const deletePreMatricula = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await preMatriculaService.deletePreMatricula(id);
+
+    res.json({
+      success: true,
+      message: "Pré-matrícula deletada com sucesso",
+    });
+  } catch (error) {
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "Erro ao deletar pré-matrícula",
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
+  }
+};
+
+export const convertPreMatricula = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { turmaId } = req.body;
+    const preMatricula = await preMatriculaService.convertToMatriculaCompleta(
+      id,
+      turmaId
+    );
+
+    res.json({
+      success: true,
+      data: preMatricula,
+      message: "Pré-matrícula convertida para matrícula completa com sucesso",
+    });
+  } catch (error) {
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "Erro ao converter pré-matrícula",
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
   }
 };
 

@@ -94,20 +94,18 @@ const columns = [
     label: "Data",
     sortable: true,
   },
-  {
-    key: "acoes" as const,
-    label: "Ações",
-    render: () => (
-      <Button variant="outline" size="sm">
-        <Eye className="h-4 w-4 mr-1" />
-        Ver
-      </Button>
-    ),
-  },
 ];
 
 export default function Dashboard() {
   const { user } = useAuth();
+
+  // Função para obter saudação baseada no horário
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Bom dia";
+    if (hour < 18) return "Boa tarde";
+    return "Boa noite";
+  };
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["dashboard-stats"],
@@ -134,7 +132,7 @@ export default function Dashboard() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Visão Geral</h1>
           <p className="text-muted-foreground">
-            Bem-vindo de volta, {user?.name}! Aqui está um resumo das suas
+            {getGreeting()}, {user?.name}! Aqui está um resumo das suas
             atividades.
           </p>
         </div>
@@ -147,7 +145,7 @@ export default function Dashboard() {
       </div>
 
       {/* Cards de Estatísticas - Bento Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Card principal - Total de Matrículas */}
         <div className="md:col-span-2 md:row-span-2">
           <StatsCard
@@ -189,7 +187,7 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Card secundário - Vagas */}
+        {/* Card inferior - Vagas */}
         <div className="md:col-span-2">
           <StatsCard
             title="Vagas Disponíveis"

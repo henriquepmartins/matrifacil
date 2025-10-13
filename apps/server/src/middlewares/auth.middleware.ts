@@ -2,7 +2,12 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { AppError } from "./error.middleware.js";
-import { AuthenticatedUser } from "../types/express.js";
+
+export interface AuthenticatedUser {
+  id: string;
+  email: string;
+  name: string;
+}
 
 interface JWTPayload {
   userId: string;

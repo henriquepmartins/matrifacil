@@ -1,4 +1,4 @@
-import { db, SyncQueueItem } from "./index";
+import { db, type SyncQueueItem } from "./index";
 
 const MAX_RETRIES = 3;
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
