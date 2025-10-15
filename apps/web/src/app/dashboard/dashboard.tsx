@@ -25,48 +25,14 @@ const mockStats = {
   vagasDisponiveis: 12,
 };
 
-const mockMatriculasRecentes = [
-  {
-    id: "1",
-    protocolo: "MAT-2024-001",
-    aluno: "João Silva Santos",
-    responsavel: "Maria Silva",
-    status: "completo" as const,
-    data: "2024-01-15",
-  },
-  {
-    id: "2",
-    protocolo: "MAT-2024-002",
-    aluno: "Ana Costa Lima",
-    responsavel: "Pedro Costa",
-    status: "pendente_doc" as const,
-    data: "2024-01-14",
-  },
-  {
-    id: "3",
-    protocolo: "MAT-2024-003",
-    aluno: "Carlos Oliveira",
-    responsavel: "Sandra Oliveira",
-    status: "pre" as const,
-    data: "2024-01-13",
-  },
-  {
-    id: "4",
-    protocolo: "MAT-2024-004",
-    aluno: "Mariana Ferreira",
-    responsavel: "Roberto Ferreira",
-    status: "concluido" as const,
-    data: "2024-01-12",
-  },
-  {
-    id: "5",
-    protocolo: "MAT-2024-005",
-    aluno: "Lucas Rodrigues",
-    responsavel: "Patricia Rodrigues",
-    status: "completo" as const,
-    data: "2024-01-11",
-  },
-];
+type MatriculaRow = {
+  id: string;
+  protocolo: string;
+  aluno: string;
+  responsavel: string;
+  status: "pre" | "pendente_doc" | "completo" | "concluido";
+  data: string;
+};
 
 const columns = [
   {
@@ -118,10 +84,25 @@ export default function Dashboard() {
 
   const { data: matriculasRecentes, isLoading: matriculasLoading } = useQuery({
     queryKey: ["matriculas-recentes"],
-    queryFn: async () => {
-      // Simular delay da API
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      return mockMatriculasRecentes;
+    queryFn: async (): Promise<MatriculaRow[]> => {
+      const response = await fetch(
+        "http://localhost:3000/api/pre-matriculas?limit=5"
+      );
+      if (!response.ok) {
+        // Em caso de erro, retornar lista vazia para não quebrar o dashboard
+        return [];
+      }
+      const result = await response.json();
+      const data = (result?.data || []) as Array<any>;
+      // Mapear para o formato esperado pela tabela
+      return data.map((item) => ({
+        id: item.id,
+        protocolo: item.protocoloLocal,
+        aluno: item.aluno?.nome,
+        responsavel: item.responsavel?.nome,
+        status: item.status,
+        data: new Date(item.createdAt).toISOString().slice(0, 10),
+      }));
     },
   });
 

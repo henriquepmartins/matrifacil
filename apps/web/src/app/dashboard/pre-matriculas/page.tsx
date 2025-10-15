@@ -54,6 +54,8 @@ interface PreMatricula {
   } | null;
 }
 
+type PreMatriculaRow = PreMatricula & { alunoNome: string };
+
 export default function PreMatriculasPage() {
   const queryClient = useQueryClient();
   const [filtroStatus, setFiltroStatus] = useState<string>("todos");
@@ -62,14 +64,10 @@ export default function PreMatriculasPage() {
     useState<PreMatricula | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  const { data: preMatriculas, isLoading } = useQuery({
-    queryKey: ["pre-matriculas", filtroStatus, filtroEtapa],
+  const { data: allPreMatriculas, isLoading } = useQuery({
+    queryKey: ["pre-matriculas"],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (filtroStatus !== "todos") params.append("status", filtroStatus);
-      if (filtroEtapa !== "todos") params.append("etapa", filtroEtapa);
-
-      const response = await fetch(`/api/pre-matriculas?${params.toString()}`);
+      const response = await fetch("http://localhost:3000/api/pre-matriculas");
       if (!response.ok) {
         throw new Error("Erro ao buscar pré-matrículas");
       }
@@ -78,11 +76,30 @@ export default function PreMatriculasPage() {
     },
   });
 
+  // Filtrar dados no lado do cliente
+  const preMatriculas = allPreMatriculas?.filter((item: PreMatricula) => {
+    const statusMatch =
+      filtroStatus === "todos" || item.status === filtroStatus;
+    const etapaMatch =
+      filtroEtapa === "todos" || item.aluno.etapa === filtroEtapa;
+    return statusMatch && etapaMatch;
+  });
+
+  const tableData: PreMatriculaRow[] = (preMatriculas || []).map(
+    (item: PreMatricula) => ({
+      ...item,
+      alunoNome: item.aluno.nome,
+    })
+  );
+
   const deletePreMatriculaMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await fetch(`/api/pre-matriculas/${id}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `http://localhost:3000/api/pre-matriculas/${id}`,
+        {
+          method: "DELETE",
+        }
+      );
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || "Erro ao deletar pré-matrícula");
@@ -109,6 +126,11 @@ export default function PreMatriculasPage() {
   };
 
   const columns = [
+    {
+      key: "alunoNome" as const,
+      label: "Aluno",
+      sortable: true,
+    },
     {
       key: "protocoloLocal" as const,
       label: "Protocolo",
@@ -210,9 +232,9 @@ export default function PreMatriculasPage() {
         </CardHeader>
         <CardContent>
           <DataTable
-            data={preMatriculas || []}
-            columns={columns}
-            searchKey="aluno"
+            data={tableData}
+            columns={columns as any}
+            searchKey={"alunoNome" as any}
             searchPlaceholder="Buscar por aluno..."
             pageSize={10}
           />

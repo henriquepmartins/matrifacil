@@ -71,7 +71,7 @@ export default function NovaPreMatriculaPage() {
 
   const createPreMatriculaMutation = useMutation({
     mutationFn: async (data: PreMatriculaFormData) => {
-      const response = await fetch("/api/pre-matriculas", {
+      const response = await fetch("http://localhost:3000/api/pre-matriculas", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -123,21 +123,27 @@ export default function NovaPreMatriculaPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/dashboard/pre-matriculas">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Voltar
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Nova Pré-Matrícula
-          </h1>
-          <p className="text-muted-foreground">
-            Preencha os dados do aluno e responsável para criar uma nova
-            pré-matrícula.
-          </p>
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            asChild
+            className="hover:bg-gray-100 dark:hover:bg-gray-800"
+          >
+            <Link href="/dashboard/pre-matriculas">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Nova Pré-Matrícula
+            </h1>
+            <p className="text-muted-foreground">
+              Preencha os dados do aluno e responsável para criar uma nova
+              pré-matrícula.
+            </p>
+          </div>
         </div>
       </div>
 

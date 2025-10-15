@@ -209,12 +209,10 @@ export class PreMatriculaService {
   ): Promise<PreMatriculaWithDetails> {
     this.validateCreateData(data);
 
-    // Verificar se CPF já existe
-    const existingByCPF = await preMatriculaRepository.findAll({
-      search: data.responsavel.cpf,
-    });
-
-    if (existingByCPF.length > 0) {
+    // Verificar se CPF já existe (responsável possui unique index)
+    const existingResponsavel =
+      await preMatriculaRepository.findResponsavelByCPF(data.responsavel.cpf);
+    if (existingResponsavel) {
       throw new AppError(400, "Já existe uma pré-matrícula com este CPF");
     }
 

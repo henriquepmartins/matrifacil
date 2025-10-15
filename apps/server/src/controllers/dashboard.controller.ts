@@ -199,7 +199,18 @@ export const getPreMatriculas = async (req: Request, res: Response) => {
 
 export const createPreMatricula = async (req: Request, res: Response) => {
   try {
-    const preMatricula = await preMatriculaService.createPreMatricula(req.body);
+    // Converter string de data para Date se necessário
+    const data = {
+      ...req.body,
+      aluno: {
+        ...req.body.aluno,
+        dataNascimento: req.body.aluno?.dataNascimento
+          ? new Date(req.body.aluno.dataNascimento)
+          : undefined,
+      },
+    };
+
+    const preMatricula = await preMatriculaService.createPreMatricula(data);
 
     res.status(201).json({
       success: true,

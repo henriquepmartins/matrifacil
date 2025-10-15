@@ -80,6 +80,17 @@ export interface PreMatriculaWithDetails {
 
 export class PreMatriculaRepository {
   /**
+   * Busca um responsável pelo CPF
+   */
+  async findResponsavelByCPF(cpfValue: string): Promise<{ id: string } | null> {
+    const [result] = await db
+      .select({ id: responsavel.id })
+      .from(responsavel)
+      .where(eq(responsavel.cpf, cpfValue))
+      .limit(1);
+    return result || null;
+  }
+  /**
    * Gera um protocolo único para pré-matrícula
    */
   private async generateProtocolo(): Promise<string> {
