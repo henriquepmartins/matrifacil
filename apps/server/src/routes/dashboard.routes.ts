@@ -11,6 +11,9 @@ import {
   convertPreMatricula,
   createMatriculaFromPre,
   getTurmas,
+  updateMatriculasWithTurmas,
+  updateMatricula,
+  deleteMatricula,
 } from "../controllers/dashboard.controller.js";
 
 const router = Router();
@@ -21,6 +24,8 @@ router.get("/api/dashboard/stats", getDashboardStats);
 // Matrículas
 router.get("/api/matriculas", getMatriculas);
 router.get("/api/matriculas/recentes", getMatriculasRecentes);
+router.put("/api/matriculas/:id", updateMatricula);
+router.delete("/api/matriculas/:id", deleteMatricula);
 
 // Pré-matrículas
 router.get("/api/pre-matriculas", getPreMatriculas);
@@ -33,5 +38,8 @@ router.post("/api/matriculas/from-pre/:id", createMatriculaFromPre);
 
 // Turmas
 router.get("/api/turmas", getTurmas);
+
+// Atualizar matrículas com turmas
+router.post("/api/matriculas/update-turmas", updateMatriculasWithTurmas);
 
 export default router;

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import DataTable from "@/components/data-table";
 import StatusBadge from "@/components/status-badge";
+import MatriculaActionsMenu from "@/components/matricula-actions-menu";
 import { Plus, Eye, Edit, GraduationCap, FileText } from "lucide-react";
 import Link from "next/link";
 
@@ -25,6 +26,33 @@ type MatriculaRow = {
   status: "pre" | "pendente_doc" | "completo" | "concluido";
   data: string;
   cuidadora?: boolean;
+  actions?: any; // Para a coluna de ações
+  // Dados completos da API
+  alunoData?: {
+    id: string;
+    nome: string;
+    dataNascimento: string;
+    etapa: string;
+    necessidadesEspeciais: boolean;
+    observacoes: string | null;
+  };
+  responsavelData?: {
+    id: string;
+    nome: string;
+    cpf: string;
+    telefone: string;
+    endereco: string;
+    bairro: string;
+    email: string | null;
+    parentesco: string;
+    autorizadoRetirada: boolean;
+  };
+  turmaData?: {
+    id: string;
+    nome: string;
+    etapa: string;
+    turno: string;
+  };
 };
 
 const columns = [
@@ -52,7 +80,9 @@ const columns = [
           Necessária
         </span>
       ) : (
-        <span className="text-xs text-muted-foreground">—</span>
+        <span className="text-xs text-muted-foreground text-center flex justify-center">
+          —
+        </span>
       ),
   },
   {
@@ -69,6 +99,11 @@ const columns = [
     key: "data" as const,
     label: "Data",
     sortable: true,
+  },
+  {
+    key: "actions" as const,
+    label: "Ações",
+    render: (_: any, item: any) => <MatriculaActionsMenu matricula={item} />,
   },
 ];
 
@@ -97,6 +132,10 @@ export default function MatriculasPage() {
         status: item.status,
         data: new Date(item.createdAt).toISOString().slice(0, 10),
         cuidadora: Boolean(item.aluno?.necessidadesEspeciais),
+        // Dados completos para o modal
+        alunoData: item.aluno,
+        responsavelData: item.responsavel,
+        turmaData: item.turma,
       }));
     },
   });

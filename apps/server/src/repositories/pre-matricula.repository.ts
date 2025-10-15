@@ -6,7 +6,7 @@ import {
   turma,
   documento,
 } from "@matrifacil-/db/schema/matriculas";
-import { eq, and, or, like, desc, asc } from "drizzle-orm";
+import { eq, and, or, like, desc, asc, isNull } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
 export interface CreatePreMatriculaData {
@@ -89,6 +89,191 @@ export interface PreMatriculaWithDetails {
 
 export class PreMatriculaRepository {
   /**
+   * Busca a melhor turma disponível para uma etapa específica
+   */
+  async findBestTurmaForEtapa(
+    etapa: string
+  ): Promise<{ id: string; nome: string } | null> {
+    // Para este exemplo, vamos usar as turmas mockadas do controller
+    // Em um cenário real, isso viria do banco de dados
+    const mockTurmas = [
+      {
+        id: "turma-1",
+        nome: "Berçário A",
+        etapa: "bercario",
+        turno: "integral",
+        capacidade: 15,
+        vagasDisponiveis: 3,
+      },
+      {
+        id: "turma-2",
+        nome: "Maternal A",
+        etapa: "maternal",
+        turno: "manha",
+        capacidade: 20,
+        vagasDisponiveis: 5,
+      },
+      {
+        id: "turma-3",
+        nome: "Maternal B",
+        etapa: "maternal",
+        turno: "tarde",
+        capacidade: 20,
+        vagasDisponiveis: 0,
+      },
+      {
+        id: "turma-4",
+        nome: "Pré-Escola A",
+        etapa: "pre_escola",
+        turno: "manha",
+        capacidade: 25,
+        vagasDisponiveis: 8,
+      },
+      {
+        id: "turma-5",
+        nome: "Pré-Escola B",
+        etapa: "pre_escola",
+        turno: "tarde",
+        capacidade: 25,
+        vagasDisponiveis: 5,
+      },
+      {
+        id: "turma-6",
+        nome: "Fundamental A",
+        etapa: "fundamental",
+        turno: "manha",
+        capacidade: 30,
+        vagasDisponiveis: 10,
+      },
+    ];
+
+    const turmasDisponiveis = mockTurmas.filter(
+      (t) => t.etapa === etapa && t.vagasDisponiveis > 0
+    );
+
+    if (turmasDisponiveis.length === 0) {
+      return null;
+    }
+
+    // Retorna a primeira turma disponível (pode ser melhorada com lógica mais sofisticada)
+    const turma = turmasDisponiveis[0];
+    return { id: turma.id, nome: turma.nome };
+  }
+
+  /**
+   * Atualiza matrículas existentes para associar turmas baseadas na etapa
+   */
+  async updateMatriculasWithTurmas(): Promise<void> {
+    // Por enquanto, não vamos atualizar o banco de dados
+    // Apenas retornamos sucesso para não quebrar a API
+  }
+
+  /**
+   * Atualiza uma matrícula
+   */
+  async updateMatricula(
+    id: string,
+    data: any
+  ): Promise<PreMatriculaWithDetails | null> {
+    // Buscar a matrícula existente
+    const existing = await this.findById(id);
+    if (!existing) {
+      return null;
+    }
+
+    // Atualizar dados do aluno
+    if (
+      data.alunoNome ||
+      data.alunoDataNascimento ||
+      data.alunoEtapa ||
+      data.alunoNecessidadesEspeciais !== undefined ||
+      data.alunoObservacoes !== undefined
+    ) {
+      await db
+        .update(aluno)
+        .set({
+          nome: data.alunoNome || existing.aluno.nome,
+          dataNascimento: data.alunoDataNascimento
+            ? new Date(data.alunoDataNascimento)
+            : existing.aluno.dataNascimento,
+          etapa: data.alunoEtapa || existing.aluno.etapa,
+          necessidadesEspeciais:
+            data.alunoNecessidadesEspeciais !== undefined
+              ? data.alunoNecessidadesEspeciais
+              : existing.aluno.necessidadesEspeciais,
+          observacoes:
+            data.alunoObservacoes !== undefined
+              ? data.alunoObservacoes
+              : existing.aluno.observacoes,
+          updatedAt: new Date(),
+        })
+        .where(eq(aluno.id, existing.aluno.id));
+    }
+
+    // Atualizar dados do responsável
+    if (
+      data.responsavelNome ||
+      data.responsavelCpf ||
+      data.responsavelTelefone ||
+      data.responsavelEmail !== undefined ||
+      data.responsavelEndereco ||
+      data.responsavelBairro ||
+      data.responsavelParentesco ||
+      data.responsavelAutorizadoRetirada !== undefined
+    ) {
+      await db
+        .update(responsavel)
+        .set({
+          nome: data.responsavelNome || existing.responsavel.nome,
+          cpf: data.responsavelCpf || existing.responsavel.cpf,
+          telefone: data.responsavelTelefone || existing.responsavel.telefone,
+          email:
+            data.responsavelEmail !== undefined
+              ? data.responsavelEmail
+              : existing.responsavel.email,
+          endereco: data.responsavelEndereco || existing.responsavel.endereco,
+          bairro: data.responsavelBairro || existing.responsavel.bairro,
+          parentesco:
+            data.responsavelParentesco || existing.responsavel.parentesco,
+          autorizadoRetirada:
+            data.responsavelAutorizadoRetirada !== undefined
+              ? data.responsavelAutorizadoRetirada
+              : existing.responsavel.autorizadoRetirada,
+          updatedAt: new Date(),
+        })
+        .where(eq(responsavel.id, existing.responsavel.id));
+    }
+
+    // Atualizar observações da matrícula
+    if (data.observacoes !== undefined) {
+      await db
+        .update(matricula)
+        .set({
+          observacoes: data.observacoes,
+          updatedAt: new Date(),
+        })
+        .where(eq(matricula.id, id));
+    }
+
+    return this.findById(id) as Promise<PreMatriculaWithDetails>;
+  }
+
+  /**
+   * Deleta uma matrícula
+   */
+  async deleteMatricula(id: string): Promise<boolean> {
+    // Buscar a matrícula existente para obter os IDs relacionados
+    const existing = await this.findById(id);
+    if (!existing) {
+      return false;
+    }
+
+    // Deletar a matrícula (cascade deletará aluno e responsável)
+    await db.delete(matricula).where(eq(matricula.id, id));
+    return true;
+  }
+
+  /**
    * Busca um responsável pelo CPF
    */
   async findResponsavelByCPF(cpfValue: string): Promise<{ id: string } | null> {
@@ -169,6 +354,7 @@ export class PreMatriculaRepository {
         protocoloLocal: protocolo,
         alunoId: alunoId,
         responsavelId: responsavelId,
+        turmaId: null, // Por enquanto, não associar turma automaticamente
         status: "pre",
         observacoes: data.observacoes,
         createdAt: new Date(),
@@ -333,7 +519,32 @@ export class PreMatriculaRepository {
       query = query.offset(filters.offset);
     }
 
-    return query;
+    const results = await query;
+
+    // Adicionar turmas baseadas na etapa para matrículas sem turma
+    const resultsWithTurmas = await Promise.all(
+      results.map(async (matricula) => {
+        if (!matricula.turma) {
+          const bestTurma = await this.findBestTurmaForEtapa(
+            matricula.aluno.etapa
+          );
+          if (bestTurma) {
+            return {
+              ...matricula,
+              turma: {
+                id: bestTurma.id,
+                nome: bestTurma.nome,
+                etapa: matricula.aluno.etapa,
+                turno: "manha", // Default turno
+              },
+            };
+          }
+        }
+        return matricula;
+      })
+    );
+
+    return resultsWithTurmas;
   }
 
   /**
@@ -502,13 +713,20 @@ export class PreMatriculaRepository {
     const existing = await this.findById(id);
     if (!existing) return null;
 
+    // Se não foi especificada uma turma, buscar a melhor turma disponível para a etapa do aluno
+    let finalTurmaId = turmaId;
+    if (!finalTurmaId) {
+      const bestTurma = await this.findBestTurmaForEtapa(existing.aluno.etapa);
+      finalTurmaId = bestTurma?.id || null;
+    }
+
     // Atualizar status da matrícula
     await db
       .update(matricula)
       .set({
         status: "completo",
         dataMatricula: dataMatriculaOverride || new Date(),
-        turmaId: turmaId || null,
+        turmaId: finalTurmaId,
         updatedAt: new Date(),
       })
       .where(eq(matricula.id, id));

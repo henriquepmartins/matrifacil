@@ -376,6 +376,55 @@ export class PreMatriculaService {
     // Observação: para contagem precisa em filtros complexos, crie um count dedicado
     return { data, total: data.length };
   }
+
+  /**
+   * Atualiza matrículas existentes para associar turmas baseadas na etapa
+   */
+  async updateMatriculasWithTurmas(): Promise<void> {
+    await preMatriculaRepository.updateMatriculasWithTurmas();
+  }
+
+  /**
+   * Atualiza uma matrícula
+   */
+  async updateMatricula(id: string, data: any): Promise<any> {
+    if (!id) {
+      throw new AppError(400, "ID da matrícula é obrigatório");
+    }
+
+    // Validar dados básicos
+    if (data.alunoNome && data.alunoNome.trim().length < 2) {
+      throw new AppError(400, "Nome do aluno deve ter pelo menos 2 caracteres");
+    }
+
+    if (data.responsavelNome && data.responsavelNome.trim().length < 2) {
+      throw new AppError(
+        400,
+        "Nome do responsável deve ter pelo menos 2 caracteres"
+      );
+    }
+
+    const result = await preMatriculaRepository.updateMatricula(id, data);
+    if (!result) {
+      throw new AppError(404, "Matrícula não encontrada");
+    }
+
+    return result;
+  }
+
+  /**
+   * Deleta uma matrícula
+   */
+  async deleteMatricula(id: string): Promise<void> {
+    if (!id) {
+      throw new AppError(400, "ID da matrícula é obrigatório");
+    }
+
+    const deleted = await preMatriculaRepository.deleteMatricula(id);
+    if (!deleted) {
+      throw new AppError(404, "Matrícula não encontrada");
+    }
+  }
 }
 
 export const preMatriculaService = new PreMatriculaService();

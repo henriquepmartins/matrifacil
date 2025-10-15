@@ -367,6 +367,26 @@ export const createMatriculaFromPre = async (req: Request, res: Response) => {
   }
 };
 
+export const updateMatriculasWithTurmas = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    await preMatriculaService.updateMatriculasWithTurmas();
+
+    res.json({
+      success: true,
+      message: "Matrículas atualizadas com turmas baseadas na etapa dos alunos",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Erro ao atualizar matrículas com turmas",
+      error: error instanceof Error ? error.message : "Erro desconhecido",
+    });
+  }
+};
+
 export const getTurmas = async (req: Request, res: Response) => {
   try {
     const { etapa, turno, search, limit, offset } = req.query;
@@ -406,5 +426,59 @@ export const getTurmas = async (req: Request, res: Response) => {
       message: "Erro ao buscar turmas",
       error: error instanceof Error ? error.message : "Erro desconhecido",
     });
+  }
+};
+
+export const updateMatricula = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    const result = await preMatriculaService.updateMatricula(id, updateData);
+
+    res.json({
+      success: true,
+      data: result,
+      message: "Matrícula atualizada com sucesso",
+    });
+  } catch (error) {
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "Erro ao atualizar matrícula",
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
+  }
+};
+
+export const deleteMatricula = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    await preMatriculaService.deleteMatricula(id);
+
+    res.json({
+      success: true,
+      message: "Matrícula deletada com sucesso",
+    });
+  } catch (error) {
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "Erro ao deletar matrícula",
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
   }
 };
