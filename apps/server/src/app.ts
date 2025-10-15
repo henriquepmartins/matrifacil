@@ -22,8 +22,7 @@ export function createApp(): Application {
 
   // Request logging (apenas em desenvolvimento)
   if (process.env.NODE_ENV === "development") {
-    app.use((req, res, next) => {
-      void res; // mark as used to satisfy noUnusedParameters
+    app.use((req, _res, next) => {
       console.log(`${req.method} ${req.path}`);
       next();
     });
