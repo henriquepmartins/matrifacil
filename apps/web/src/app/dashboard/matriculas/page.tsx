@@ -16,63 +16,16 @@ import StatusBadge from "@/components/status-badge";
 import { Plus, Eye, Edit, GraduationCap, FileText } from "lucide-react";
 import Link from "next/link";
 
-// Dados mock para demonstração
-const mockMatriculas = [
-  {
-    id: "1",
-    protocolo: "MAT-2024-001",
-    aluno: "João Silva Santos",
-    responsavel: "Maria Silva",
-    turma: "Maternal A - Manhã",
-    status: "completo" as const,
-    data: "2024-01-15",
-  },
-  {
-    id: "2",
-    protocolo: "MAT-2024-002",
-    aluno: "Ana Costa Lima",
-    responsavel: "Pedro Costa",
-    turma: "Pré-Escola B - Tarde",
-    status: "pendente_doc" as const,
-    data: "2024-01-14",
-  },
-  {
-    id: "3",
-    protocolo: "MAT-2024-003",
-    aluno: "Carlos Oliveira",
-    responsavel: "Sandra Oliveira",
-    turma: "Berçário C - Integral",
-    status: "completo" as const,
-    data: "2024-01-13",
-  },
-  {
-    id: "4",
-    protocolo: "MAT-2024-004",
-    aluno: "Mariana Ferreira",
-    responsavel: "Roberto Ferreira",
-    turma: "Fundamental 1A - Manhã",
-    status: "concluido" as const,
-    data: "2024-01-12",
-  },
-  {
-    id: "5",
-    protocolo: "MAT-2024-005",
-    aluno: "Lucas Rodrigues",
-    responsavel: "Patricia Rodrigues",
-    turma: "Maternal B - Tarde",
-    status: "completo" as const,
-    data: "2024-01-11",
-  },
-  {
-    id: "6",
-    protocolo: "MAT-2024-006",
-    aluno: "Sofia Almeida",
-    responsavel: "Carlos Almeida",
-    turma: "Pré-Escola A - Manhã",
-    status: "pendente_doc" as const,
-    data: "2024-01-10",
-  },
-];
+type MatriculaRow = {
+  id: string;
+  protocolo: string;
+  aluno: string;
+  responsavel: string;
+  turma: string | null;
+  status: "pre" | "pendente_doc" | "completo" | "concluido";
+  data: string;
+  cuidadora?: boolean;
+};
 
 const columns = [
   {
@@ -89,6 +42,18 @@ const columns = [
     key: "responsavel" as const,
     label: "Responsável",
     sortable: true,
+  },
+  {
+    key: "cuidadora" as const,
+    label: "Cuidadora",
+    render: (_: any, item: any) =>
+      item.cuidadora ? (
+        <span className="inline-flex items-center rounded bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800">
+          Necessária
+        </span>
+      ) : (
+        <span className="text-xs text-muted-foreground">—</span>
+      ),
   },
   {
     key: "turma" as const,
@@ -113,21 +78,26 @@ export default function MatriculasPage() {
 
   const { data: matriculas, isLoading } = useQuery({
     queryKey: ["matriculas", filtroStatus, filtroTurma],
-    queryFn: async () => {
-      // Simular delay da API
-      await new Promise((resolve) => setTimeout(resolve, 800));
-
-      let filtered = [...mockMatriculas];
-
-      if (filtroStatus !== "todos") {
-        filtered = filtered.filter((item) => item.status === filtroStatus);
-      }
-
-      if (filtroTurma !== "todos") {
-        filtered = filtered.filter((item) => item.turma.includes(filtroTurma));
-      }
-
-      return filtered;
+    queryFn: async (): Promise<MatriculaRow[]> => {
+      const params = new URLSearchParams();
+      if (filtroStatus !== "todos") params.set("status", filtroStatus);
+      if (filtroTurma !== "todos") params.set("etapa", filtroTurma);
+      const response = await fetch(
+        `http://localhost:3000/api/matriculas?${params.toString()}`
+      );
+      if (!response.ok) return [];
+      const result = await response.json();
+      const data = (result?.data || []) as Array<any>;
+      return data.map((item) => ({
+        id: item.id,
+        protocolo: item.protocoloLocal,
+        aluno: item.aluno?.nome,
+        responsavel: item.responsavel?.nome,
+        turma: item.turma ? `${item.turma.nome} - ${item.turma.turno}` : null,
+        status: item.status,
+        data: new Date(item.createdAt).toISOString().slice(0, 10),
+        cuidadora: Boolean(item.aluno?.necessidadesEspeciais),
+      }));
     },
   });
 
@@ -143,9 +113,9 @@ export default function MatriculasPage() {
           </p>
         </div>
         <Button asChild>
-          <Link href="/dashboard/pre-matriculas/nova">
+          <Link href="/dashboard/matriculas/nova">
             <Plus className="h-4 w-4 mr-2" />
-            Nova Pré-Matrícula
+            Nova Matrícula
           </Link>
         </Button>
       </div>

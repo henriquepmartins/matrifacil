@@ -4,6 +4,7 @@ import {
   aluno,
   responsavel,
   turma,
+  documento,
 } from "@matrifacil-/db/schema/matriculas";
 import { eq, and, or, like, desc, asc } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
@@ -37,6 +38,14 @@ export interface UpdatePreMatriculaData {
 
 export interface PreMatriculaFilters {
   status?: string;
+  etapa?: string;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface MatriculaFilters {
+  status?: string; // pre | pendente_doc | completo | concluido
   etapa?: string;
   search?: string;
   limit?: number;
@@ -251,6 +260,83 @@ export class PreMatriculaRepository {
   }
 
   /**
+   * Lista matrículas (qualquer status), com filtros opcionais
+   */
+  async findAllMatriculas(
+    filters: MatriculaFilters = {}
+  ): Promise<PreMatriculaWithDetails[]> {
+    let query = db
+      .select({
+        id: matricula.id,
+        protocoloLocal: matricula.protocoloLocal,
+        status: matricula.status,
+        dataMatricula: matricula.dataMatricula,
+        observacoes: matricula.observacoes,
+        createdAt: matricula.createdAt,
+        updatedAt: matricula.updatedAt,
+        aluno: {
+          id: aluno.id,
+          nome: aluno.nome,
+          dataNascimento: aluno.dataNascimento,
+          etapa: aluno.etapa,
+          necessidadesEspeciais: aluno.necessidadesEspeciais,
+          observacoes: aluno.observacoes,
+        },
+        responsavel: {
+          id: responsavel.id,
+          nome: responsavel.nome,
+          cpf: responsavel.cpf,
+          telefone: responsavel.telefone,
+          endereco: responsavel.endereco,
+          bairro: responsavel.bairro,
+          email: responsavel.email,
+          parentesco: responsavel.parentesco,
+          autorizadoRetirada: responsavel.autorizadoRetirada,
+        },
+        turma: {
+          id: turma.id,
+          nome: turma.nome,
+          etapa: turma.etapa,
+          turno: turma.turno,
+        },
+      })
+      .from(matricula)
+      .leftJoin(aluno, eq(matricula.alunoId, aluno.id))
+      .leftJoin(responsavel, eq(matricula.responsavelId, responsavel.id))
+      .leftJoin(turma, eq(matricula.turmaId, turma.id))
+      .orderBy(desc(matricula.createdAt));
+
+    if (filters.status && filters.status !== "todos") {
+      query = query.where(eq(matricula.status, filters.status as any));
+    }
+
+    if (filters.etapa) {
+      query = query.where(eq(aluno.etapa, filters.etapa as any));
+    }
+
+    if (filters.search) {
+      const searchTerm = `%${filters.search}%`;
+      query = query.where(
+        or(
+          like(aluno.nome, searchTerm),
+          like(responsavel.nome, searchTerm),
+          like(matricula.protocoloLocal, searchTerm)
+        )
+      );
+    }
+
+    if (filters.limit) {
+      query = query.limit(filters.limit);
+    }
+
+    if (filters.offset) {
+      query = query.offset(filters.offset);
+    }
+
+    return query;
+  }
+
+  /**
    * Busca uma pré-matrícula por ID
    */
   async findById(id: string): Promise<PreMatriculaWithDetails | null> {
@@ -294,6 +380,55 @@ export class PreMatriculaRepository {
       .leftJoin(responsavel, eq(matricula.responsavelId, responsavel.id))
       .leftJoin(turma, eq(matricula.turmaId, turma.id))
       .where(and(eq(matricula.id, id), eq(matricula.status, "pre")))
+      .limit(1);
+
+    return result || null;
+  }
+
+  /**
+   * Busca matrícula por ID qualquer que seja o status
+   */
+  async findByIdAny(id: string): Promise<PreMatriculaWithDetails | null> {
+    const [result] = await db
+      .select({
+        id: matricula.id,
+        protocoloLocal: matricula.protocoloLocal,
+        status: matricula.status,
+        dataMatricula: matricula.dataMatricula,
+        observacoes: matricula.observacoes,
+        createdAt: matricula.createdAt,
+        updatedAt: matricula.updatedAt,
+        aluno: {
+          id: aluno.id,
+          nome: aluno.nome,
+          dataNascimento: aluno.dataNascimento,
+          etapa: aluno.etapa,
+          necessidadesEspeciais: aluno.necessidadesEspeciais,
+          observacoes: aluno.observacoes,
+        },
+        responsavel: {
+          id: responsavel.id,
+          nome: responsavel.nome,
+          cpf: responsavel.cpf,
+          telefone: responsavel.telefone,
+          endereco: responsavel.endereco,
+          bairro: responsavel.bairro,
+          email: responsavel.email,
+          parentesco: responsavel.parentesco,
+          autorizadoRetirada: responsavel.autorizadoRetirada,
+        },
+        turma: {
+          id: turma.id,
+          nome: turma.nome,
+          etapa: turma.etapa,
+          turno: turma.turno,
+        },
+      })
+      .from(matricula)
+      .leftJoin(aluno, eq(matricula.alunoId, aluno.id))
+      .leftJoin(responsavel, eq(matricula.responsavelId, responsavel.id))
+      .leftJoin(turma, eq(matricula.turmaId, turma.id))
+      .where(eq(matricula.id, id))
       .limit(1);
 
     return result || null;
@@ -360,7 +495,9 @@ export class PreMatriculaRepository {
    */
   async convertToMatriculaCompleta(
     id: string,
-    turmaId?: string
+    turmaId?: string,
+    dataMatriculaOverride?: Date,
+    documentosIniciais?: { tipo: string; observacoes?: string }[]
   ): Promise<PreMatriculaWithDetails | null> {
     const existing = await this.findById(id);
     if (!existing) return null;
@@ -370,7 +507,7 @@ export class PreMatriculaRepository {
       .update(matricula)
       .set({
         status: "completo",
-        dataMatricula: new Date(),
+        dataMatricula: dataMatriculaOverride || new Date(),
         turmaId: turmaId || null,
         updatedAt: new Date(),
       })
@@ -385,7 +522,22 @@ export class PreMatriculaRepository {
       })
       .where(eq(aluno.id, existing.aluno.id));
 
-    return this.findById(id) as Promise<PreMatriculaWithDetails>;
+    // Criar documentos iniciais, se fornecidos
+    if (documentosIniciais && documentosIniciais.length > 0) {
+      await db.insert(documento).values(
+        documentosIniciais.map((d) => ({
+          id: uuidv4(),
+          matriculaId: id,
+          tipo: d.tipo as any,
+          status: "pendente",
+          observacoes: d.observacoes,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }))
+      );
+    }
+
+    return this.findByIdAny(id) as Promise<PreMatriculaWithDetails>;
   }
 
   /**

@@ -127,31 +127,21 @@ export const getMatriculasRecentes = async (req: Request, res: Response) => {
 
 export const getMatriculas = async (req: Request, res: Response) => {
   try {
-    const { status, turma, search } = req.query;
+    const { status, etapa, search, limit, offset } = req.query;
+    const filters = {
+      status: status as string,
+      etapa: etapa as string,
+      search: search as string,
+      limit: limit ? parseInt(limit as string) : undefined,
+      offset: offset ? parseInt(offset as string) : undefined,
+    };
 
-    // Simular delay da API
-    await new Promise((resolve) => setTimeout(resolve, 400));
-
-    let filtered = [...mockMatriculasRecentes];
-
-    if (status && status !== "todos") {
-      filtered = filtered.filter((item) => item.status === status);
-    }
-
-    if (search) {
-      filtered = filtered.filter(
-        (item) =>
-          item.aluno.toLowerCase().includes(search.toString().toLowerCase()) ||
-          item.responsavel
-            .toLowerCase()
-            .includes(search.toString().toLowerCase())
-      );
-    }
+    const result = await preMatriculaService.getMatriculas(filters);
 
     res.json({
       success: true,
-      data: filtered,
-      total: filtered.length,
+      data: result.data,
+      total: result.total,
     });
   } catch (error) {
     res.status(500).json({
@@ -315,10 +305,12 @@ export const deletePreMatricula = async (req: Request, res: Response) => {
 export const convertPreMatricula = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { turmaId } = req.body;
+    const { turmaId, dataMatricula, documentosIniciais } = req.body;
     const preMatricula = await preMatriculaService.convertToMatriculaCompleta(
       id,
-      turmaId
+      turmaId,
+      dataMatricula ? new Date(dataMatricula) : undefined,
+      documentosIniciais
     );
 
     res.json({
@@ -342,9 +334,42 @@ export const convertPreMatricula = async (req: Request, res: Response) => {
   }
 };
 
+// Novo: criar matrícula a partir de uma pré com payload mais completo
+export const createMatriculaFromPre = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params; // id da pré
+    const { turmaId, dataMatricula, documentosIniciais } = req.body;
+
+    const result = await preMatriculaService.convertToMatriculaCompleta(
+      id,
+      turmaId,
+      dataMatricula ? new Date(dataMatricula) : undefined,
+      documentosIniciais
+    );
+
+    res.status(201).json({
+      success: true,
+      data: result,
+      message: "Matrícula criada a partir da pré-matrícula",
+    });
+  } catch (error) {
+    if (error instanceof AppError) {
+      res
+        .status(error.statusCode)
+        .json({ success: false, message: error.message });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "Erro ao criar matrícula a partir da pré",
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
+  }
+};
+
 export const getTurmas = async (req: Request, res: Response) => {
   try {
-    const { etapa, turno, search } = req.query;
+    const { etapa, turno, search, limit, offset } = req.query;
 
     // Simular delay da API
     await new Promise((resolve) => setTimeout(resolve, 400));
@@ -365,9 +390,14 @@ export const getTurmas = async (req: Request, res: Response) => {
       );
     }
 
+    // Paginação simples
+    const start = offset ? parseInt(offset as string) : 0;
+    const end = limit ? start + parseInt(limit as string) : undefined;
+    const paged = filtered.slice(start, end);
+
     res.json({
       success: true,
-      data: filtered,
+      data: paged,
       total: filtered.length,
     });
   } catch (error) {

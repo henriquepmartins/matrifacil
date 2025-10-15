@@ -9,6 +9,7 @@ import {
   updatePreMatricula,
   deletePreMatricula,
   convertPreMatricula,
+  createMatriculaFromPre,
   getTurmas,
 } from "../controllers/dashboard.controller.js";
 
@@ -28,6 +29,7 @@ router.get("/api/pre-matriculas/:id", getPreMatriculaById);
 router.put("/api/pre-matriculas/:id", updatePreMatricula);
 router.delete("/api/pre-matriculas/:id", deletePreMatricula);
 router.post("/api/pre-matriculas/:id/converter", convertPreMatricula);
+router.post("/api/matriculas/from-pre/:id", createMatriculaFromPre);
 
 // Turmas
 router.get("/api/turmas", getTurmas);

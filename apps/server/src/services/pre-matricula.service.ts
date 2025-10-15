@@ -4,6 +4,7 @@ import type {
   UpdatePreMatriculaData,
   PreMatriculaFilters,
   PreMatriculaWithDetails,
+  MatriculaFilters,
 } from "../repositories/pre-matricula.repository.js";
 import { AppError } from "../middlewares/error.middleware.js";
 
@@ -308,7 +309,9 @@ export class PreMatriculaService {
    */
   async convertToMatriculaCompleta(
     id: string,
-    turmaId?: string
+    turmaId?: string,
+    dataMatriculaOverride?: Date,
+    documentosIniciais?: { tipo: string; observacoes?: string }[]
   ): Promise<PreMatriculaWithDetails> {
     if (!id) {
       throw new AppError(400, "ID da pré-matrícula é obrigatório");
@@ -325,7 +328,9 @@ export class PreMatriculaService {
 
     const converted = await preMatriculaRepository.convertToMatriculaCompleta(
       id,
-      turmaId
+      turmaId,
+      dataMatriculaOverride,
+      documentosIniciais
     );
     if (!converted) {
       throw new AppError(404, "Pré-matrícula não encontrada");
@@ -358,6 +363,18 @@ export class PreMatriculaService {
       porEtapa,
       recentes: recentes.length,
     };
+  }
+
+  /**
+   * Lista matrículas (qualquer status)
+   */
+  async getMatriculas(filters: MatriculaFilters = {}): Promise<{
+    data: PreMatriculaWithDetails[];
+    total: number;
+  }> {
+    const data = await preMatriculaRepository.findAllMatriculas(filters);
+    // Observação: para contagem precisa em filtros complexos, crie um count dedicado
+    return { data, total: data.length };
   }
 }
 
