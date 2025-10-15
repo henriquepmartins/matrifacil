@@ -23,6 +23,7 @@ export function createApp(): Application {
   // Request logging (apenas em desenvolvimento)
   if (process.env.NODE_ENV === "development") {
     app.use((req, _res, next) => {
+      void _res;
       console.log(`${req.method} ${req.path}`);
       next();
     });
