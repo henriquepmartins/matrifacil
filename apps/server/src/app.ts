@@ -1,5 +1,4 @@
 import express from "express";
-import type { Application } from "express";
 import cookieParser from "cookie-parser";
 import { corsMiddleware } from "./middlewares/cors.middleware.js";
 import {
@@ -11,7 +10,7 @@ import routes from "./routes/index.js";
 /**
  * Configura e retorna a aplicação Express
  */
-export function createApp(): Application {
+export function createApp() {
   const app = express();
 
   // Middlewares globais
