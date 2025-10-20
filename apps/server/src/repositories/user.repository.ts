@@ -1,4 +1,4 @@
-import { db } from "../config/database.js";
+import { db } from "../config/database.config.js";
 import { user, session, account } from "@matrifacil-/db/schema/auth";
 import { eq, and } from "drizzle-orm";
 

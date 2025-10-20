@@ -1,45 +1,39 @@
 import { Router } from "express";
-import {
-  getDashboardStats,
-  getMatriculasRecentes,
-  getMatriculas,
-  getPreMatriculas,
-  createPreMatricula,
-  getPreMatriculaById,
-  updatePreMatricula,
-  deletePreMatricula,
-  convertPreMatricula,
-  createMatriculaFromPre,
-  getTurmas,
-  updateMatriculasWithTurmas,
-  updateMatricula,
-  deleteMatricula,
-} from "../controllers/dashboard.controller.js";
+import { container } from "../infrastructure/config/container.config.js";
+import { MatriculaController } from "../adapters/web/matricula.controller.js";
 
 const router = Router();
+const matriculaController = container.get<MatriculaController>(
+  "matriculaController"
+);
 
-// Dashboard stats
-router.get("/api/dashboard/stats", getDashboardStats);
+router.get("/api/dashboard/stats", (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      totalMatriculas: 156,
+      preMatriculas: 23,
+      documentosPendentes: 8,
+      vagasDisponiveis: 12,
+    },
+  });
+});
 
-// Matrículas
-router.get("/api/matriculas", getMatriculas);
-router.get("/api/matriculas/recentes", getMatriculasRecentes);
-router.put("/api/matriculas/:id", updateMatricula);
-router.delete("/api/matriculas/:id", deleteMatricula);
-
-// Pré-matrículas
-router.get("/api/pre-matriculas", getPreMatriculas);
-router.post("/api/pre-matriculas", createPreMatricula);
-router.get("/api/pre-matriculas/:id", getPreMatriculaById);
-router.put("/api/pre-matriculas/:id", updatePreMatricula);
-router.delete("/api/pre-matriculas/:id", deletePreMatricula);
-router.post("/api/pre-matriculas/:id/converter", convertPreMatricula);
-router.post("/api/matriculas/from-pre/:id", createMatriculaFromPre);
-
-// Turmas
-router.get("/api/turmas", getTurmas);
-
-// Atualizar matrículas com turmas
-router.post("/api/matriculas/update-turmas", updateMatriculasWithTurmas);
+router.get(
+  "/api/matriculas",
+  matriculaController.getMatriculas.bind(matriculaController)
+);
+router.post(
+  "/api/pre-matriculas",
+  matriculaController.createPreMatricula.bind(matriculaController)
+);
+router.post(
+  "/api/pre-matriculas/:id/converter",
+  matriculaController.convertToMatriculaCompleta.bind(matriculaController)
+);
+router.post(
+  "/api/matriculas/:id/approve",
+  matriculaController.approveMatricula.bind(matriculaController)
+);
 
 export default router;

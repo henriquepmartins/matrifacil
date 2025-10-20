@@ -3,9 +3,6 @@ import { sql } from "drizzle-orm";
 
 export { db };
 
-/**
- * Verifica a conexão com o banco de dados
- */
 export async function checkDatabaseConnection(): Promise<boolean> {
   try {
     await db.execute(sql`SELECT 1`);
@@ -16,9 +13,6 @@ export async function checkDatabaseConnection(): Promise<boolean> {
   }
 }
 
-/**
- * Inicializa a conexão com o banco de dados
- */
 export async function initializeDatabase(): Promise<void> {
   console.log("🔌 Conectando ao banco de dados...");
   const isConnected = await checkDatabaseConnection();

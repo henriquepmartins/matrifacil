@@ -15,6 +15,13 @@
       "when": 1760293321868,
       "tag": "0001_salty_tigra",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1760568353852,
+      "tag": "0002_needy_maverick",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { checkDatabaseConnection } from "../config/database.js";
+import { checkDatabaseConnection } from "../config/database.config.js";
 
 export class HealthController {
   /**

@@ -130,7 +130,7 @@ export default function MatriculasPage() {
         responsavel: item.responsavel?.nome,
         turma: item.turma ? `${item.turma.nome} - ${item.turma.turno}` : null,
         status: item.status,
-        data: new Date(item.createdAt).toISOString().slice(0, 10),
+        data: new Date(item.createdAt).toLocaleDateString("pt-BR"),
         cuidadora: Boolean(item.aluno?.necessidadesEspeciais),
         // Dados completos para o modal
         alunoData: item.aluno,

@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import { randomBytes } from "crypto";
 import { userRepository } from "../repositories/user.repository.js";
 import { AppError } from "../middlewares/error.middleware.js";
-import { env } from "../config/env.js";
+import { env } from "../config/env.config.js";
 
 export interface SignUpData {
   name: string;

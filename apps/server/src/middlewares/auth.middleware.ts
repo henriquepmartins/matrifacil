@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import { env } from "../config/env.js";
+import { env } from "../config/env.config.js";
 import { AppError } from "./error.middleware.js";
 
 export interface AuthenticatedUser {
@@ -22,12 +22,10 @@ export function authenticateToken(
   next: NextFunction
 ): void {
   try {
-    // Verifica token no header Authorization
     const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(" ")[1]; // Bearer TOKEN
+    const token = authHeader && authHeader.split(" ")[1];
 
     if (!token) {
-      // Verifica também nos cookies
       const cookieToken = req.cookies?.token;
       if (!cookieToken) {
         throw new AppError(401, "Token não fornecido");
@@ -36,10 +34,8 @@ export function authenticateToken(
 
     const actualToken = token || req.cookies?.token;
 
-    // Verifica e decodifica o token
     const decoded = jwt.verify(actualToken, env.JWT_SECRET) as JWTPayload;
 
-    // Adiciona informações do usuário na requisição
     req.user = {
       id: decoded.userId,
       email: decoded.email,
@@ -81,7 +77,6 @@ export function optionalAuth(
     }
     next();
   } catch (error) {
-    // Ignora erros para autenticação opcional
     next();
   }
 }

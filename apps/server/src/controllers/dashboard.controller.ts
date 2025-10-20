@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import { preMatriculaService } from "../services/pre-matricula.service.js";
 import { AppError } from "../middlewares/error.middleware.js";
 
-// Dados mock para demonstração (mantidos para outras funcionalidades)
 const mockStats = {
   totalMatriculas: 156,
   preMatriculas: 23,
@@ -91,7 +90,6 @@ const mockTurmas = [
 
 export const getDashboardStats = async (req: Request, res: Response) => {
   try {
-    // Simular delay da API
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     res.json({
@@ -109,7 +107,6 @@ export const getDashboardStats = async (req: Request, res: Response) => {
 
 export const getMatriculasRecentes = async (req: Request, res: Response) => {
   try {
-    // Simular delay da API
     await new Promise((resolve) => setTimeout(resolve, 300));
 
     res.json({
@@ -189,7 +186,6 @@ export const getPreMatriculas = async (req: Request, res: Response) => {
 
 export const createPreMatricula = async (req: Request, res: Response) => {
   try {
-    // Converter string de data para Date se necessário
     const data = {
       ...req.body,
       aluno: {
@@ -334,10 +330,9 @@ export const convertPreMatricula = async (req: Request, res: Response) => {
   }
 };
 
-// Novo: criar matrícula a partir de uma pré com payload mais completo
 export const createMatriculaFromPre = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params; // id da pré
+    const { id } = req.params;
     const { turmaId, dataMatricula, documentosIniciais } = req.body;
 
     const result = await preMatriculaService.convertToMatriculaCompleta(
@@ -391,7 +386,6 @@ export const getTurmas = async (req: Request, res: Response) => {
   try {
     const { etapa, turno, search, limit, offset } = req.query;
 
-    // Simular delay da API
     await new Promise((resolve) => setTimeout(resolve, 400));
 
     let filtered = [...mockTurmas];
@@ -410,7 +404,6 @@ export const getTurmas = async (req: Request, res: Response) => {
       );
     }
 
-    // Paginação simples
     const start = offset ? parseInt(offset as string) : 0;
     const end = limit ? start + parseInt(limit as string) : undefined;
     const paged = filtered.slice(start, end);
@@ -477,6 +470,33 @@ export const deleteMatricula = async (req: Request, res: Response) => {
       res.status(500).json({
         success: false,
         message: "Erro ao deletar matrícula",
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
+  }
+};
+
+export const approveMatricula = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const result = await preMatriculaService.approveMatricula(id);
+
+    res.json({
+      success: true,
+      data: result,
+      message: "Matrícula aprovada com sucesso",
+    });
+  } catch (error) {
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "Erro ao aprovar matrícula",
         error: error instanceof Error ? error.message : "Erro desconhecido",
       });
     }

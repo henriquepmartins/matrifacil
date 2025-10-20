@@ -7,7 +7,6 @@ import {
   pgEnum,
 } from "drizzle-orm/pg-core";
 
-// Enums
 export const statusMatriculaEnum = pgEnum("status_matricula", [
   "pre",
   "pendente_doc",
@@ -35,7 +34,6 @@ export const etapaEnum = pgEnum("etapa", [
 ]);
 export const turnoEnum = pgEnum("turno", ["manha", "tarde", "integral"]);
 
-// Tabela de Alunos
 export const aluno = pgTable("aluno", {
   id: text("id").primaryKey(),
   idGlobal: text("id_global").unique(),
@@ -47,11 +45,22 @@ export const aluno = pgTable("aluno", {
     .notNull()
     .default(false),
   observacoes: text("observacoes"),
+  rg: text("rg"),
+  cpf: text("cpf"),
+  naturalidade: text("naturalidade"),
+  nacionalidade: text("nacionalidade").default("Brasileira"),
+  sexo: text("sexo"),
+  corRaca: text("cor_raca"),
+  tipoSanguineo: text("tipo_sanguineo"),
+  alergias: text("alergias"),
+  medicamentos: text("medicamentos"),
+  doencas: text("doencas"),
+  carteiraVacina: boolean("carteira_vacina").default(false),
+  observacoesSaude: text("observacoes_saude"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-// Tabela de Responsáveis
 export const responsavel = pgTable("responsavel", {
   id: text("id").primaryKey(),
   idGlobal: text("id_global").unique(),
@@ -63,11 +72,22 @@ export const responsavel = pgTable("responsavel", {
   email: text("email"),
   parentesco: text("parentesco").notNull().default("pai"),
   autorizadoRetirada: boolean("autorizado_retirada").notNull().default(true),
+  rg: text("rg"),
+  dataNascimento: timestamp("data_nascimento"),
+  naturalidade: text("naturalidade"),
+  nacionalidade: text("nacionalidade").default("Brasileira"),
+  sexo: text("sexo"),
+  estadoCivil: text("estado_civil"),
+  profissao: text("profissao"),
+  localTrabalho: text("local_trabalho"),
+  telefoneTrabalho: text("telefone_trabalho"),
+  contatoEmergencia: text("contato_emergencia"),
+  telefoneEmergencia: text("telefone_emergencia"),
+  parentescoEmergencia: text("parentesco_emergencia"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-// Tabela de Turmas
 export const turma = pgTable("turma", {
   id: text("id").primaryKey(),
   idGlobal: text("id_global").unique(),
@@ -82,7 +102,6 @@ export const turma = pgTable("turma", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-// Tabela de Matrículas
 export const matricula = pgTable("matricula", {
   id: text("id").primaryKey(),
   idGlobal: text("id_global").unique(),
@@ -103,7 +122,6 @@ export const matricula = pgTable("matricula", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-// Tabela de Documentos
 export const documento = pgTable("documento", {
   id: text("id").primaryKey(),
   matriculaId: text("matricula_id")
@@ -119,7 +137,19 @@ export const documento = pgTable("documento", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-// Tabela de Pendências
+export const contatoEmergencia = pgTable("contato_emergencia", {
+  id: text("id").primaryKey(),
+  matriculaId: text("matricula_id")
+    .notNull()
+    .references(() => matricula.id, { onDelete: "cascade" }),
+  nome: text("nome").notNull(),
+  telefone: text("telefone").notNull(),
+  parentesco: text("parentesco").notNull(),
+  observacoes: text("observacoes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const pendencia = pgTable("pendencia", {
   id: text("id").primaryKey(),
   matriculaId: text("matricula_id")

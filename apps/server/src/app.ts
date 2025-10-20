@@ -7,19 +7,14 @@ import {
 } from "./middlewares/error.middleware.js";
 import routes from "./routes/index.js";
 
-/**
- * Configura e retorna a aplicação Express
- */
 export function createApp() {
   const app = express();
 
-  // Middlewares globais
   app.use(corsMiddleware);
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
 
-  // Request logging (apenas em desenvolvimento)
   if (process.env.NODE_ENV === "development") {
     app.use((req, _res, next) => {
       void _res;
@@ -28,13 +23,10 @@ export function createApp() {
     });
   }
 
-  // Rotas
   app.use(routes);
 
-  // Handler para rotas não encontradas
   app.use(notFoundHandler);
 
-  // Handler de erros (deve ser o último middleware)
   app.use(errorHandler);
 
   return app;

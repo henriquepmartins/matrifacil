@@ -9,17 +9,12 @@ import type {
 import { AppError } from "../middlewares/error.middleware.js";
 
 export class PreMatriculaService {
-  /**
-   * Valida CPF básico
-   */
   private validateCPF(cpf: string): boolean {
     const cleanCPF = cpf.replace(/\D/g, "");
     if (cleanCPF.length !== 11) return false;
 
-    // Verificar se todos os dígitos são iguais
     if (/^(\d)\1{10}$/.test(cleanCPF)) return false;
 
-    // Validação básica do CPF
     let sum = 0;
     for (let i = 0; i < 9; i++) {
       sum += parseInt(cleanCPF.charAt(i)) * (10 - i);
@@ -39,27 +34,17 @@ export class PreMatriculaService {
     return true;
   }
 
-  /**
-   * Valida telefone brasileiro
-   */
   private validatePhone(phone: string): boolean {
     const cleanPhone = phone.replace(/\D/g, "");
     return cleanPhone.length >= 10 && cleanPhone.length <= 11;
   }
 
-  /**
-   * Valida email
-   */
   private validateEmail(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   }
 
-  /**
-   * Valida dados de criação de pré-matrícula
-   */
   private validateCreateData(data: CreatePreMatriculaData): void {
-    // Validar dados do aluno
     if (!data.aluno.nome || data.aluno.nome.trim().length < 2) {
       throw new AppError(
         400,
@@ -82,7 +67,6 @@ export class PreMatriculaService {
       throw new AppError(400, "Etapa educacional é obrigatória");
     }
 
-    // Validar dados do responsável
     if (!data.responsavel.nome || data.responsavel.nome.trim().length < 2) {
       throw new AppError(
         400,
@@ -129,9 +113,6 @@ export class PreMatriculaService {
     }
   }
 
-  /**
-   * Valida dados de atualização de pré-matrícula
-   */
   private validateUpdateData(data: UpdatePreMatriculaData): void {
     if (data.aluno) {
       if (data.aluno.nome && data.aluno.nome.trim().length < 2) {
@@ -202,9 +183,6 @@ export class PreMatriculaService {
     }
   }
 
-  /**
-   * Cria uma nova pré-matrícula
-   */
   async createPreMatricula(
     data: CreatePreMatriculaData
   ): Promise<PreMatriculaWithDetails> {
@@ -220,9 +198,6 @@ export class PreMatriculaService {
     return preMatriculaRepository.createPreMatricula(data);
   }
 
-  /**
-   * Busca pré-matrículas com filtros
-   */
   async getPreMatriculas(filters: PreMatriculaFilters = {}): Promise<{
     data: PreMatriculaWithDetails[];
     total: number;
@@ -233,9 +208,6 @@ export class PreMatriculaService {
     return { data, total };
   }
 
-  /**
-   * Busca uma pré-matrícula por ID
-   */
   async getPreMatriculaById(id: string): Promise<PreMatriculaWithDetails> {
     if (!id) {
       throw new AppError(400, "ID da pré-matrícula é obrigatório");
@@ -249,9 +221,6 @@ export class PreMatriculaService {
     return preMatricula;
   }
 
-  /**
-   * Atualiza uma pré-matrícula
-   */
   async updatePreMatricula(
     id: string,
     data: UpdatePreMatriculaData
@@ -290,9 +259,6 @@ export class PreMatriculaService {
     return updated;
   }
 
-  /**
-   * Deleta uma pré-matrícula
-   */
   async deletePreMatricula(id: string): Promise<void> {
     if (!id) {
       throw new AppError(400, "ID da pré-matrícula é obrigatório");
@@ -304,9 +270,6 @@ export class PreMatriculaService {
     }
   }
 
-  /**
-   * Converte pré-matrícula para matrícula completa
-   */
   async convertToMatriculaCompleta(
     id: string,
     turmaId?: string,
@@ -339,9 +302,6 @@ export class PreMatriculaService {
     return converted;
   }
 
-  /**
-   * Busca estatísticas de pré-matrículas
-   */
   async getPreMatriculasStats(): Promise<{
     total: number;
     porEtapa: Record<string, number>;
@@ -365,9 +325,6 @@ export class PreMatriculaService {
     };
   }
 
-  /**
-   * Lista matrículas (qualquer status)
-   */
   async getMatriculas(filters: MatriculaFilters = {}): Promise<{
     data: PreMatriculaWithDetails[];
     total: number;
@@ -377,16 +334,10 @@ export class PreMatriculaService {
     return { data, total: data.length };
   }
 
-  /**
-   * Atualiza matrículas existentes para associar turmas baseadas na etapa
-   */
   async updateMatriculasWithTurmas(): Promise<void> {
     await preMatriculaRepository.updateMatriculasWithTurmas();
   }
 
-  /**
-   * Atualiza uma matrícula
-   */
   async updateMatricula(id: string, data: any): Promise<any> {
     if (!id) {
       throw new AppError(400, "ID da matrícula é obrigatório");
@@ -412,9 +363,6 @@ export class PreMatriculaService {
     return result;
   }
 
-  /**
-   * Deleta uma matrícula
-   */
   async deleteMatricula(id: string): Promise<void> {
     if (!id) {
       throw new AppError(400, "ID da matrícula é obrigatório");
@@ -424,6 +372,19 @@ export class PreMatriculaService {
     if (!deleted) {
       throw new AppError(404, "Matrícula não encontrada");
     }
+  }
+
+  async approveMatricula(id: string): Promise<any> {
+    if (!id) {
+      throw new AppError(400, "ID da matrícula é obrigatório");
+    }
+
+    const result = await preMatriculaRepository.approveMatricula(id);
+    if (!result) {
+      throw new AppError(404, "Matrícula não encontrada");
+    }
+
+    return result;
   }
 }
 

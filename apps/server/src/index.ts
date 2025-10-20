@@ -1,21 +1,15 @@
 import { createApp } from "./app.js";
-import { env } from "./config/env.js";
-import { initializeDatabase } from "./config/database.js";
+import { env } from "./config/env.config.js";
+import { initializeDatabase } from "./infrastructure/database/database.config.js";
 
-/**
- * Inicializa o servidor
- */
 async function startServer() {
   try {
     console.log("🚀 Iniciando servidor MatriFácil...\n");
 
-    // Inicializa a conexão com o banco de dados
     await initializeDatabase();
 
-    // Cria a aplicação Express
     const app = createApp();
 
-    // Inicia o servidor
     const port = parseInt(env.PORT);
     app.listen(port, () => {
       console.log(`\n✅ Servidor rodando com sucesso!`);
@@ -30,7 +24,6 @@ async function startServer() {
   }
 }
 
-// Tratamento de erros não capturados
 process.on("unhandledRejection", (reason, promise) => {
   console.error("❌ Unhandled Rejection at:", promise, "reason:", reason);
   process.exit(1);
@@ -41,7 +34,6 @@ process.on("uncaughtException", (error) => {
   process.exit(1);
 });
 
-// Graceful shutdown
 process.on("SIGTERM", () => {
   console.log("\n🛑 SIGTERM recebido. Encerrando servidor graciosamente...");
   process.exit(0);
@@ -52,5 +44,4 @@ process.on("SIGINT", () => {
   process.exit(0);
 });
 
-// Inicia o servidor
 startServer();

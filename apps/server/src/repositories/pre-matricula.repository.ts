@@ -1,4 +1,4 @@
-import { db } from "../config/database.js";
+import { db } from "../config/database.config.js";
 import {
   matricula,
   aluno,
@@ -88,14 +88,9 @@ export interface PreMatriculaWithDetails {
 }
 
 export class PreMatriculaRepository {
-  /**
-   * Busca a melhor turma disponível para uma etapa específica
-   */
   async findBestTurmaForEtapa(
     etapa: string
   ): Promise<{ id: string; nome: string } | null> {
-    // Para este exemplo, vamos usar as turmas mockadas do controller
-    // Em um cenário real, isso viria do banco de dados
     const mockTurmas = [
       {
         id: "turma-1",
@@ -155,33 +150,21 @@ export class PreMatriculaRepository {
       return null;
     }
 
-    // Retorna a primeira turma disponível (pode ser melhorada com lógica mais sofisticada)
     const turma = turmasDisponiveis[0];
     return { id: turma.id, nome: turma.nome };
   }
 
-  /**
-   * Atualiza matrículas existentes para associar turmas baseadas na etapa
-   */
-  async updateMatriculasWithTurmas(): Promise<void> {
-    // Por enquanto, não vamos atualizar o banco de dados
-    // Apenas retornamos sucesso para não quebrar a API
-  }
+  async updateMatriculasWithTurmas(): Promise<void> {}
 
-  /**
-   * Atualiza uma matrícula
-   */
   async updateMatricula(
     id: string,
     data: any
   ): Promise<PreMatriculaWithDetails | null> {
-    // Buscar a matrícula existente
     const existing = await this.findById(id);
     if (!existing) {
       return null;
     }
 
-    // Atualizar dados do aluno
     if (
       data.alunoNome ||
       data.alunoDataNascimento ||
@@ -210,7 +193,6 @@ export class PreMatriculaRepository {
         .where(eq(aluno.id, existing.aluno.id));
     }
 
-    // Atualizar dados do responsável
     if (
       data.responsavelNome ||
       data.responsavelCpf ||
@@ -244,7 +226,6 @@ export class PreMatriculaRepository {
         .where(eq(responsavel.id, existing.responsavel.id));
     }
 
-    // Atualizar observações da matrícula
     if (data.observacoes !== undefined) {
       await db
         .update(matricula)
@@ -258,24 +239,46 @@ export class PreMatriculaRepository {
     return this.findById(id) as Promise<PreMatriculaWithDetails>;
   }
 
-  /**
-   * Deleta uma matrícula
-   */
+  async approveMatricula(id: string): Promise<PreMatriculaWithDetails | null> {
+    const existing = await this.findById(id);
+    if (!existing) {
+      return null;
+    }
+
+    if (existing.status === "completo") {
+      throw new Error("Matrícula já está aprovada");
+    }
+
+    await db
+      .update(matricula)
+      .set({
+        status: "completo",
+        dataMatricula: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(matricula.id, id));
+
+    await db
+      .update(aluno)
+      .set({
+        status: "completo",
+        updatedAt: new Date(),
+      })
+      .where(eq(aluno.id, existing.aluno.id));
+
+    return this.findById(id) as Promise<PreMatriculaWithDetails>;
+  }
+
   async deleteMatricula(id: string): Promise<boolean> {
-    // Buscar a matrícula existente para obter os IDs relacionados
     const existing = await this.findById(id);
     if (!existing) {
       return false;
     }
 
-    // Deletar a matrícula (cascade deletará aluno e responsável)
     await db.delete(matricula).where(eq(matricula.id, id));
     return true;
   }
 
-  /**
-   * Busca um responsável pelo CPF
-   */
   async findResponsavelByCPF(cpfValue: string): Promise<{ id: string } | null> {
     const [result] = await db
       .select({ id: responsavel.id })
@@ -284,29 +287,32 @@ export class PreMatriculaRepository {
       .limit(1);
     return result || null;
   }
-  /**
-   * Gera um protocolo único para pré-matrícula
-   */
   private async generateProtocolo(): Promise<string> {
     const year = new Date().getFullYear();
-    const count = await db
-      .select({ count: matricula.id })
-      .from(matricula)
-      .where(like(matricula.protocoloLocal, `PRE-${year}-%`));
 
-    const nextNumber = (count.length || 0) + 1;
+    const existingProtocols = await db
+      .select({ protocoloLocal: matricula.protocoloLocal })
+      .from(matricula)
+      .where(like(matricula.protocoloLocal, `PRE-${year}-%`))
+      .orderBy(desc(matricula.protocoloLocal));
+
+    let nextNumber = 1;
+    if (existingProtocols.length > 0) {
+      const lastProtocol = existingProtocols[0].protocoloLocal;
+      const match = lastProtocol.match(/PRE-\d{4}-(\d{3})/);
+      if (match) {
+        nextNumber = parseInt(match[1]) + 1;
+      }
+    }
+
     return `PRE-${year}-${nextNumber.toString().padStart(3, "0")}`;
   }
 
-  /**
-   * Cria uma nova pré-matrícula
-   */
   async createPreMatricula(
     data: CreatePreMatriculaData
   ): Promise<PreMatriculaWithDetails> {
     const protocolo = await this.generateProtocolo();
 
-    // Criar aluno
     const alunoId = uuidv4();
     const [newAluno] = await db
       .insert(aluno)
@@ -324,7 +330,6 @@ export class PreMatriculaRepository {
       })
       .returning();
 
-    // Criar responsável
     const responsavelId = uuidv4();
     const [newResponsavel] = await db
       .insert(responsavel)
@@ -344,7 +349,6 @@ export class PreMatriculaRepository {
       })
       .returning();
 
-    // Criar matrícula (pré-matrícula)
     const matriculaId = uuidv4();
     const [newMatricula] = await db
       .insert(matricula)
@@ -354,7 +358,6 @@ export class PreMatriculaRepository {
         protocoloLocal: protocolo,
         alunoId: alunoId,
         responsavelId: responsavelId,
-        turmaId: null, // Por enquanto, não associar turma automaticamente
         status: "pre",
         observacoes: data.observacoes,
         createdAt: new Date(),
@@ -365,9 +368,6 @@ export class PreMatriculaRepository {
     return this.findById(matriculaId) as Promise<PreMatriculaWithDetails>;
   }
 
-  /**
-   * Busca pré-matrículas com filtros
-   */
   async findAll(
     filters: PreMatriculaFilters = {}
   ): Promise<PreMatriculaWithDetails[]> {
@@ -413,7 +413,6 @@ export class PreMatriculaRepository {
       .where(eq(matricula.status, "pre"))
       .orderBy(desc(matricula.createdAt));
 
-    // Aplicar filtros
     if (filters.etapa) {
       query = query.where(
         and(eq(matricula.status, "pre"), eq(aluno.etapa, filters.etapa as any))
@@ -445,9 +444,6 @@ export class PreMatriculaRepository {
     return query;
   }
 
-  /**
-   * Lista matrículas (qualquer status), com filtros opcionais
-   */
   async findAllMatriculas(
     filters: MatriculaFilters = {}
   ): Promise<PreMatriculaWithDetails[]> {
@@ -521,7 +517,6 @@ export class PreMatriculaRepository {
 
     const results = await query;
 
-    // Adicionar turmas baseadas na etapa para matrículas sem turma
     const resultsWithTurmas = await Promise.all(
       results.map(async (matricula) => {
         if (!matricula.turma) {
@@ -535,7 +530,7 @@ export class PreMatriculaRepository {
                 id: bestTurma.id,
                 nome: bestTurma.nome,
                 etapa: matricula.aluno.etapa,
-                turno: "manha", // Default turno
+                turno: "manha",
               },
             };
           }
@@ -547,9 +542,6 @@ export class PreMatriculaRepository {
     return resultsWithTurmas;
   }
 
-  /**
-   * Busca uma pré-matrícula por ID
-   */
   async findById(id: string): Promise<PreMatriculaWithDetails | null> {
     const [result] = await db
       .select({
@@ -596,9 +588,6 @@ export class PreMatriculaRepository {
     return result || null;
   }
 
-  /**
-   * Busca matrícula por ID qualquer que seja o status
-   */
   async findByIdAny(id: string): Promise<PreMatriculaWithDetails | null> {
     const [result] = await db
       .select({
@@ -645,9 +634,6 @@ export class PreMatriculaRepository {
     return result || null;
   }
 
-  /**
-   * Atualiza uma pré-matrícula
-   */
   async updatePreMatricula(
     id: string,
     data: UpdatePreMatriculaData
@@ -655,7 +641,6 @@ export class PreMatriculaRepository {
     const existing = await this.findById(id);
     if (!existing) return null;
 
-    // Atualizar aluno se fornecido
     if (data.aluno) {
       await db
         .update(aluno)
@@ -666,7 +651,6 @@ export class PreMatriculaRepository {
         .where(eq(aluno.id, existing.aluno.id));
     }
 
-    // Atualizar responsável se fornecido
     if (data.responsavel) {
       await db
         .update(responsavel)
@@ -677,7 +661,6 @@ export class PreMatriculaRepository {
         .where(eq(responsavel.id, existing.responsavel.id));
     }
 
-    // Atualizar matrícula
     await db
       .update(matricula)
       .set({
@@ -689,21 +672,14 @@ export class PreMatriculaRepository {
     return this.findById(id) as Promise<PreMatriculaWithDetails>;
   }
 
-  /**
-   * Deleta uma pré-matrícula
-   */
   async deletePreMatricula(id: string): Promise<boolean> {
     const existing = await this.findById(id);
     if (!existing) return false;
 
-    // Deletar matrícula (cascade deletará aluno e responsável)
     await db.delete(matricula).where(eq(matricula.id, id));
     return true;
   }
 
-  /**
-   * Converte pré-matrícula para matrícula completa
-   */
   async convertToMatriculaCompleta(
     id: string,
     turmaId?: string,
@@ -713,14 +689,12 @@ export class PreMatriculaRepository {
     const existing = await this.findById(id);
     if (!existing) return null;
 
-    // Se não foi especificada uma turma, buscar a melhor turma disponível para a etapa do aluno
     let finalTurmaId = turmaId;
     if (!finalTurmaId) {
       const bestTurma = await this.findBestTurmaForEtapa(existing.aluno.etapa);
       finalTurmaId = bestTurma?.id || null;
     }
 
-    // Atualizar status da matrícula
     await db
       .update(matricula)
       .set({
@@ -731,7 +705,6 @@ export class PreMatriculaRepository {
       })
       .where(eq(matricula.id, id));
 
-    // Atualizar status do aluno
     await db
       .update(aluno)
       .set({
@@ -740,7 +713,6 @@ export class PreMatriculaRepository {
       })
       .where(eq(aluno.id, existing.aluno.id));
 
-    // Criar documentos iniciais, se fornecidos
     if (documentosIniciais && documentosIniciais.length > 0) {
       await db.insert(documento).values(
         documentosIniciais.map((d) => ({
@@ -758,9 +730,6 @@ export class PreMatriculaRepository {
     return this.findByIdAny(id) as Promise<PreMatriculaWithDetails>;
   }
 
-  /**
-   * Conta total de pré-matrículas
-   */
   async count(filters: PreMatriculaFilters = {}): Promise<number> {
     let query = db
       .select({ count: matricula.id })

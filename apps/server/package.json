@@ -11,13 +11,15 @@
   },
   "dependencies": {
     "@matrifacil-/db": "workspace:*",
-    "express": "^5.1.0",
+    "@scalar/api-reference": "^1.38.1",
+    "@scalar/express-api-reference": "^0.8.22",
+    "bcrypt": "^5.1.1",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
-    "zod": "^4.1.11",
-    "bcrypt": "^5.1.1",
+    "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
-    "cookie-parser": "^1.4.7"
+    "zod": "^4.1.11"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",

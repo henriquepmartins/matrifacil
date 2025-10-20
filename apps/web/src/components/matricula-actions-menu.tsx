@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MoreHorizontal, Edit, Trash2, Eye } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Eye, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface MatriculaData {
@@ -121,6 +121,29 @@ export default function MatriculaActionsMenu({
     },
   });
 
+  // Mutação para aprovar matrícula
+  const approveMatricula = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(
+        `http://localhost:3000/api/matriculas/${id}/approve`,
+        {
+          method: "POST",
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Erro ao aprovar matrícula");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast.success("Matrícula aprovada com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["matriculas"] });
+    },
+    onError: (error) => {
+      toast.error("Erro ao aprovar matrícula: " + error.message);
+    },
+  });
+
   // Mutação para atualizar matrícula
   const updateMatricula = useMutation({
     mutationFn: async (data: any) => {
@@ -157,6 +180,10 @@ export default function MatriculaActionsMenu({
     updateMatricula.mutate(editData);
   };
 
+  const handleApprove = () => {
+    approveMatricula.mutate(matricula.id);
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -167,6 +194,12 @@ export default function MatriculaActionsMenu({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {matricula.status === "pre" && (
+            <DropdownMenuItem onClick={handleApprove}>
+              <CheckCircle className="mr-2 h-4 w-4" />
+              Aprovar Matrícula
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
             <Edit className="mr-2 h-4 w-4" />
             Editar
