@@ -62,9 +62,7 @@ export default function NovaMatriculaPage() {
     queryFn: async (): Promise<PreResumo[]> => {
       const params = new URLSearchParams();
       if (searchPre) params.set("search", searchPre);
-      const res = await fetch(
-        `${API_URL}/api/pre-matriculas?${params}`
-      );
+      const res = await fetch(`${API_URL}/api/pre-matriculas?${params}`);
       if (!res.ok) return [];
       const json = await res.json();
       return (json.data || []) as PreResumo[];

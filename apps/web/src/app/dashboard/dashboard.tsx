@@ -86,9 +86,7 @@ export default function Dashboard() {
   const { data: matriculasRecentes, isLoading: matriculasLoading } = useQuery({
     queryKey: ["matriculas-recentes"],
     queryFn: async (): Promise<MatriculaRow[]> => {
-      const response = await fetch(
-        `${API_URL}/api/pre-matriculas?limit=5`
-      );
+      const response = await fetch(`${API_URL}/api/pre-matriculas?limit=5`);
       if (!response.ok) {
         // Em caso de erro, retornar lista vazia para não quebrar o dashboard
         return [];

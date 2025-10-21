@@ -102,12 +102,9 @@ export default function PreMatriculasPage() {
 
   const deletePreMatriculaMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await fetch(
-        `${API_URL}/api/pre-matriculas/${id}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const response = await fetch(`${API_URL}/api/pre-matriculas/${id}`, {
+        method: "DELETE",
+      });
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || "Erro ao deletar pré-matrícula");
