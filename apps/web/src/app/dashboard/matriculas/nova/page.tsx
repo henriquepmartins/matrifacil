@@ -34,7 +34,7 @@ type TurmaResumo = {
   turno: string;
 };
 
-const DOC_TIPOS = [ 
+const DOC_TIPOS = [
   "certidao",
   "rg_cpf_resp",
   "vacina",

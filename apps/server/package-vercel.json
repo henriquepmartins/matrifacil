@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "type": "commonjs",
   "scripts": {
-    "build": "tsdown --config tsdown.config.js",
+    "build": "cd ../../packages/db && bun run build && cd ../../apps/server && bun run build",
     "start": "node api/index.js"
   },
   "dependencies": {
+    "@matrifacil-/db": "file:../../packages/db",
     "@scalar/api-reference": "^1.38.1",
     "@scalar/express-api-reference": "^0.8.22",
     "bcrypt": "^5.1.1",
@@ -14,11 +15,9 @@
     "cors": "^2.8.5",
     "csv-stringify": "^6.6.0",
     "dotenv": "^16.4.7",
-    "drizzle-orm": "^0.44.2",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "pdfkit": "^0.17.2",
-    "pg": "^8.14.1",
     "zod": "^4.1.11"
   },
   "devDependencies": {
@@ -28,7 +27,6 @@
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22.13.11",
-    "@types/pg": "^8.11.11",
     "@types/pdfkit": "^0.17.3",
     "tsdown": "0.15.6",
     "typescript": "^5"

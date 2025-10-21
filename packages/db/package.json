@@ -1,6 +1,9 @@
 {
   "name": "@matrifacil-/db",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
