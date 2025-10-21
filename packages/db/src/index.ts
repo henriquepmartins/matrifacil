@@ -9,20 +9,27 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
+// Parse DATABASE_URL para extrair componentes
+const url = new URL(process.env.DATABASE_URL);
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  host: url.hostname,
+  port: parseInt(url.port),
+  database: url.pathname.slice(1), // Remove leading slash
+  user: url.username,
+  password: url.password,
   ssl: {
-    rejectUnauthorized: false
+    rejectUnauthorized: false,
+    require: true
   },
-  // Força uso de IPv4 e configurações de conexão
-  host: process.env.DATABASE_URL ? new URL(process.env.DATABASE_URL).hostname : undefined,
-  port: process.env.DATABASE_URL ? parseInt(new URL(process.env.DATABASE_URL).port) : undefined,
   // Configurações de timeout e retry
-  connectionTimeoutMillis: 10000,
+  connectionTimeoutMillis: 30000,
   idleTimeoutMillis: 30000,
   max: 20,
-  // Força IPv4
-  family: 4
+  // Força IPv4 explicitamente
+  family: 4,
+  // Configurações adicionais para IPv4
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 0
 });
 
 export const db = drizzle(pool);
