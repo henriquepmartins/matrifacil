@@ -1,7 +1,7 @@
 import { Responsavel } from "../../domain/entities/responsavel.entity";
 import type { ResponsavelRepository } from "../../domain/repositories";
 import { db } from "../database/database.config";
-import { responsavel } from "@matrifacil-/db/schema/matriculas";
+import { responsavel } from "@matrifacil-/db/schema/matriculas.js";
 import { eq } from "drizzle-orm";
 
 export class DrizzleResponsavelRepository implements ResponsavelRepository {

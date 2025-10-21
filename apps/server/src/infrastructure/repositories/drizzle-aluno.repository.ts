@@ -1,7 +1,7 @@
 import { db } from "../database/database.config";
 import { Aluno } from "../../domain/entities/aluno.entity";
 import type { AlunoRepository } from "../../domain/repositories";
-import { aluno, matricula } from "@matrifacil-/db/schema/matriculas";
+import { aluno, matricula } from "@matrifacil-/db/schema/matriculas.js";
 import { eq } from "drizzle-orm";
 
 export class DrizzleAlunoRepository implements AlunoRepository {

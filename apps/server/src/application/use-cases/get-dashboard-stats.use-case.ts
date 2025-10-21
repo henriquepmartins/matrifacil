@@ -8,7 +8,7 @@ import {
   aluno,
   documento,
   turma,
-} from "@matrifacil-/db/schema/matriculas";
+} from "@matrifacil-/db/schema/matriculas.js";
 import { eq, and, sql } from "drizzle-orm";
 
 export interface DashboardStats {

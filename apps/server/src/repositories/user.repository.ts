@@ -1,5 +1,5 @@
 import { db } from "../config/database.config.js";
-import { user, session, account } from "@matrifacil-/db/schema/auth";
+import { user, session, account } from "@matrifacil-/db/schema/auth.js";
 import { eq, and } from "drizzle-orm";
 
 export interface CreateUserData {

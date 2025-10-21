@@ -1,4 +1,4 @@
-import { db } from "@matrifacil-/db";
+import { db } from "@matrifacil-/db/index.js";
 import { sql } from "drizzle-orm";
 
 export { db };

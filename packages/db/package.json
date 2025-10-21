@@ -4,11 +4,23 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "default": "./src/index.ts"
+      "default": "./dist/index.js"
     },
-    "./*": {
-      "types": "./dist/*.d.ts",
-      "default": "./src/*.ts"
+    "./index.js": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./schema/auth.js": {
+      "types": "./dist/schema/auth.d.ts",
+      "default": "./dist/schema/auth.js"
+    },
+    "./schema/matriculas.js": {
+      "types": "./dist/schema/matriculas.d.ts",
+      "default": "./dist/schema/matriculas.js"
+    },
+    "./schema/relatorios.js": {
+      "types": "./dist/schema/relatorios.d.ts",
+      "default": "./dist/schema/relatorios.js"
     }
   },
   "scripts": {

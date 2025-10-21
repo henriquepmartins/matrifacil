@@ -1,5 +1,5 @@
-import { db } from "@matrifacil-/db";
-import { relatorioGerado } from "@matrifacil-/db";
+import { db } from "@matrifacil-/db/index.js";
+import { relatorioGerado } from "@matrifacil-/db/index.js";
 import { eq, and, desc, gte, lte, ilike, or, count } from "drizzle-orm";
 import type {
   RelatorioRepository,
@@ -86,7 +86,7 @@ export class DrizzleRelatorioRepository implements RelatorioRepository {
 
   private async getMatriculasData(filtros: FiltrosRelatorio): Promise<any[]> {
     const { aluno, responsavel, matricula, turma } = await import(
-      "@matrifacil-/db"
+      "@matrifacil-/db/index.js"
     );
 
     let query = db
@@ -185,7 +185,7 @@ export class DrizzleRelatorioRepository implements RelatorioRepository {
   }
 
   private async getTurmasData(filtros: FiltrosRelatorio): Promise<any[]> {
-    const { turma } = await import("@matrifacil-/db");
+    const { turma } = await import("@matrifacil-/db/index.js");
     const { eq, and, ilike } = await import("drizzle-orm");
 
     let query = db.select().from(turma);
@@ -211,7 +211,7 @@ export class DrizzleRelatorioRepository implements RelatorioRepository {
     const turmas = await query;
 
     // Adiciona a contagem de alunos matriculados manualmente
-    const { matricula } = await import("@matrifacil-/db");
+    const { matricula } = await import("@matrifacil-/db/index.js");
     const turmasComContagem = [];
     
     for (const turma of turmas) {
@@ -231,7 +231,7 @@ export class DrizzleRelatorioRepository implements RelatorioRepository {
 
   private async getDocumentosData(filtros: FiltrosRelatorio): Promise<any[]> {
     const { documento, matricula, aluno, responsavel } = await import(
-      "@matrifacil-/db"
+      "@matrifacil-/db/index.js"
     );
 
     let query = db
@@ -295,7 +295,7 @@ export class DrizzleRelatorioRepository implements RelatorioRepository {
 
   private async getPendenciasData(filtros: FiltrosRelatorio): Promise<any[]> {
     const { pendencia, matricula, aluno, responsavel } = await import(
-      "@matrifacil-/db"
+      "@matrifacil-/db/index.js"
     );
 
     let query = db

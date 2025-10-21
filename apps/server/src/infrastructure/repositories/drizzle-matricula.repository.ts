@@ -9,7 +9,7 @@ import {
   aluno,
   responsavel,
   turma,
-} from "@matrifacil-/db/schema/matriculas";
+} from "@matrifacil-/db/schema/matriculas.js";
 import { eq, and, sql, like, or } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 

@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db } from "@matrifacil-/db";
-import { responsavel, turma } from "@matrifacil-/db/schema/matriculas";
+import { db } from "@matrifacil-/db/index.js";
+import { responsavel, turma } from "@matrifacil-/db/schema/matriculas.js";
 import { v4 as uuidv4 } from "uuid";
 import { sql } from "drizzle-orm";
 
