@@ -16,6 +16,7 @@ import {
   Eye,
 } from "lucide-react";
 import Link from "next/link";
+import { API_URL } from "@/lib/api-client";
 
 // Dados mock para demonstração
 const mockStats = {
@@ -86,7 +87,7 @@ export default function Dashboard() {
     queryKey: ["matriculas-recentes"],
     queryFn: async (): Promise<MatriculaRow[]> => {
       const response = await fetch(
-        "http://localhost:3000/api/pre-matriculas?limit=5"
+        `${API_URL}/api/pre-matriculas?limit=5`
       );
       if (!response.ok) {
         // Em caso de erro, retornar lista vazia para não quebrar o dashboard

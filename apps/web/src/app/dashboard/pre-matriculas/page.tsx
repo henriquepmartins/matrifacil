@@ -18,6 +18,7 @@ import PreMatriculaEditDialog from "@/components/pre-matricula-edit-dialog";
 import { Plus, Eye, Edit, FileText, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { API_URL } from "@/lib/api-client";
 
 interface PreMatricula {
   id: string;
@@ -72,7 +73,7 @@ export default function PreMatriculasPage() {
     queryKey: ["pre-matriculas"],
     queryFn: async () => {
       console.log("🔍 Buscando pré-matrículas...");
-      const response = await fetch("http://localhost:3000/api/pre-matriculas");
+      const response = await fetch(`${API_URL}/api/pre-matriculas`);
       console.log("📡 Response status:", response.status);
       if (!response.ok) {
         throw new Error("Erro ao buscar pré-matrículas");
@@ -102,7 +103,7 @@ export default function PreMatriculasPage() {
   const deletePreMatriculaMutation = useMutation({
     mutationFn: async (id: string) => {
       const response = await fetch(
-        `http://localhost:3000/api/pre-matriculas/${id}`,
+        `${API_URL}/api/pre-matriculas/${id}`,
         {
           method: "DELETE",
         }

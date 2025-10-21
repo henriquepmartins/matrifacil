@@ -1,0 +1,5 @@
+apps/server
+packages
+node_modules
+.git
+*.log

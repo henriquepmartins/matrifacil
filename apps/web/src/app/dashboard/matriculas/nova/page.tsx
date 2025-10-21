@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
 import { Loader2, Save, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { API_URL } from "@/lib/api-client";
 
 type PreResumo = {
   id: string;
@@ -62,7 +63,7 @@ export default function NovaMatriculaPage() {
       const params = new URLSearchParams();
       if (searchPre) params.set("search", searchPre);
       const res = await fetch(
-        `http://localhost:3000/api/pre-matriculas?${params}`
+        `${API_URL}/api/pre-matriculas?${params}`
       );
       if (!res.ok) return [];
       const json = await res.json();
@@ -82,7 +83,7 @@ export default function NovaMatriculaPage() {
       if (etapaFiltro !== "todos") params.set("etapa", etapaFiltro);
       if (turnoFiltro !== "todos") params.set("turno", turnoFiltro);
       params.set("limit", "20");
-      const res = await fetch(`http://localhost:3000/api/turmas?${params}`);
+      const res = await fetch(`${API_URL}/api/turmas?${params}`);
       if (!res.ok) return [];
       const json = await res.json();
       return (json.data || []) as TurmaResumo[];
@@ -94,7 +95,7 @@ export default function NovaMatriculaPage() {
     mutationFn: async () => {
       if (!selectedPreId) throw new Error("Selecione uma pré-matrícula");
       const response = await fetch(
-        `http://localhost:3000/api/matriculas/from-pre/${selectedPreId}`,
+        `${API_URL}/api/matriculas/from-pre/${selectedPreId}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

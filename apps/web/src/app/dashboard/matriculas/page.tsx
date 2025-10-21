@@ -16,6 +16,7 @@ import StatusBadge from "@/components/status-badge";
 import MatriculaActionsMenu from "@/components/matricula-actions-menu";
 import { Plus, Eye, Edit, GraduationCap, FileText } from "lucide-react";
 import Link from "next/link";
+import { API_URL } from "@/lib/api-client";
 
 type MatriculaRow = {
   id: string;
@@ -118,7 +119,7 @@ export default function MatriculasPage() {
       if (filtroStatus !== "todos") params.set("status", filtroStatus);
       if (filtroTurma !== "todos") params.set("etapa", filtroTurma);
       const response = await fetch(
-        `http://localhost:3000/api/matriculas?${params.toString()}`
+        `${API_URL}/api/matriculas?${params.toString()}`
       );
       if (!response.ok) return [];
       const result = await response.json();
