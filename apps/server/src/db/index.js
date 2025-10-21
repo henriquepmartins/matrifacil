@@ -10,6 +10,8 @@ if (!process.env.DATABASE_URL) {
 
 // Parse DATABASE_URL para extrair componentes
 const url = new URL(process.env.DATABASE_URL);
+
+// Configuração específica para Supabase
 const pool = new Pool({
   host: url.hostname,
   port: parseInt(url.port),
@@ -21,14 +23,28 @@ const pool = new Pool({
     require: true
   },
   // Configurações de timeout e retry
-  connectionTimeoutMillis: 30000,
+  connectionTimeoutMillis: 60000,
   idleTimeoutMillis: 30000,
   max: 20,
   // Força IPv4 explicitamente
   family: 4,
   // Configurações adicionais para IPv4
   keepAlive: true,
-  keepAliveInitialDelayMillis: 0
+  keepAliveInitialDelayMillis: 0,
+  // Configurações específicas para Supabase
+  application_name: 'matrifacil-server',
+  // Tentar resolver DNS via IPv4
+  lookup: (hostname, options, callback) => {
+    const dns = require('dns');
+    dns.lookup(hostname, { family: 4 }, (err, address) => {
+      if (err) {
+        console.error('DNS lookup error:', err);
+        return callback(err);
+      }
+      console.log(`Resolved ${hostname} to ${address} (IPv4)`);
+      callback(null, address, 4);
+    });
+  }
 });
 
 const db = drizzle(pool);
