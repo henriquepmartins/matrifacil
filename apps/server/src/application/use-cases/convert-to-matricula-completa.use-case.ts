@@ -1,5 +1,5 @@
 import { Matricula } from "../../domain/entities/matricula.entity";
-import {
+import type {
   MatriculaRepository,
   TurmaRepository,
 } from "../../domain/repositories";

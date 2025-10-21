@@ -1,4 +1,4 @@
-import { apiClient } from "@/lib/api-client";
+import { apiClient, API_URL } from "@/lib/api-client";
 import { db } from "@/lib/db";
 
 export interface GerarRelatorioRequest {
@@ -53,7 +53,7 @@ export class RelatorioApiService {
   static async gerarRelatorio(request: GerarRelatorioRequest): Promise<Blob> {
     try {
       // Build URL and headers
-      const url = `${apiClient.baseURL}/api/relatorios/gerar`;
+      const url = `${API_URL}/api/relatorios/gerar`;
       const token = await getAuthToken();
       
       const headers: Record<string, string> = {
@@ -86,11 +86,11 @@ export class RelatorioApiService {
     offset: number = 0
   ): Promise<ListarRelatoriosResponse> {
     try {
-      const response = await apiClient.get("/api/relatorios/historico", {
-        params: { limit, offset },
-      });
+      const response = await apiClient.get<ListarRelatoriosResponse>(
+        `/api/relatorios/historico?limit=${limit}&offset=${offset}`
+      );
 
-      return response.data.data;
+      return response;
     } catch (error) {
       console.error("Erro ao listar relatórios:", error);
       throw new Error("Falha ao listar relatórios");

@@ -1,5 +1,5 @@
 import { Responsavel } from "../../domain/entities/responsavel.entity";
-import { ResponsavelRepository } from "../../domain/repositories";
+import type { ResponsavelRepository } from "../../domain/repositories";
 import { db } from "../database/database.config";
 import { responsavel } from "@matrifacil-/db/schema/matriculas";
 import { eq } from "drizzle-orm";

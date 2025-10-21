@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   RelatorioApiService,
-  GerarRelatorioRequest,
-  ListarRelatoriosResponse,
+  type GerarRelatorioRequest,
+  type ListarRelatoriosResponse,
 } from "@/infrastructure/api/relatorio-api.service";
 import { toast } from "sonner";
 

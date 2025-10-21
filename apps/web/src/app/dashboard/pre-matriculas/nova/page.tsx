@@ -28,12 +28,12 @@ const preMatriculaSchema = z.object({
     nome: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
     dataNascimento: z.string().min(1, "Data de nascimento é obrigatória"),
     etapa: z.enum(["bercario", "maternal", "pre_escola", "fundamental"]),
-    necessidadesEspeciais: z.boolean().default(false),
+    necessidadesEspeciais: z.boolean().optional(),
     observacoes: z.string().optional(),
     rg: z.string().optional(),
     cpf: z.string().optional(),
     naturalidade: z.string().optional(),
-    nacionalidade: z.string().default("Brasileira"),
+    nacionalidade: z.string().optional(),
     sexo: z.enum(["M", "F", "Outro"]).optional(),
     corRaca: z
       .enum(["Branca", "Preta", "Parda", "Amarela", "Indígena"])
@@ -42,7 +42,7 @@ const preMatriculaSchema = z.object({
     alergias: z.string().optional(),
     medicamentos: z.string().optional(),
     doencas: z.string().optional(),
-    carteiraVacina: z.boolean().default(false),
+    carteiraVacina: z.boolean().optional(),
     observacoesSaude: z.string().optional(),
   }),
   responsavel: z.object({
@@ -53,11 +53,11 @@ const preMatriculaSchema = z.object({
     bairro: z.string().min(2, "Bairro deve ter pelo menos 2 caracteres"),
     email: z.string().optional(),
     parentesco: z.string().optional(),
-    autorizadoRetirada: z.boolean().default(true),
+    autorizadoRetirada: z.boolean().optional(),
     rg: z.string().optional(),
     dataNascimento: z.string().optional(),
     naturalidade: z.string().optional(),
-    nacionalidade: z.string().default("Brasileira"),
+    nacionalidade: z.string().optional(),
     sexo: z.enum(["M", "F", "Outro"]).optional(),
     estadoCivil: z
       .enum(["Solteiro", "Casado", "Divorciado", "Viúvo"])
@@ -202,7 +202,6 @@ export default function NovaPreMatriculaPage() {
         profissao: "Professora",
         localTrabalho: "Escola Municipal",
         telefoneTrabalho: "1133334444",
-        rendaFamiliar: "R$ 3.000,00",
       },
       contatosEmergencia: [
         {

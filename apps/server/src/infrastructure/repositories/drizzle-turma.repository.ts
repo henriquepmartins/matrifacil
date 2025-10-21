@@ -1,5 +1,5 @@
 import { Turma } from "../../domain/entities/matricula.entity";
-import { TurmaRepository } from "../../domain/repositories";
+import type { TurmaRepository } from "../../domain/repositories";
 
 export class DrizzleTurmaRepository implements TurmaRepository {
   async findById(id: string): Promise<Turma | null> {

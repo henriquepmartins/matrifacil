@@ -1,6 +1,6 @@
 import { Aluno } from "./aluno.entity";
 import { Responsavel } from "./responsavel.entity";
-import { StatusMatricula } from "./aluno.entity";
+import type { StatusMatricula } from "./aluno.entity";
 
 export type Turno = "manha" | "tarde" | "integral";
 

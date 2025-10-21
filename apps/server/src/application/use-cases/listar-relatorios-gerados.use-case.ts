@@ -1,5 +1,5 @@
-import { RelatorioRepository } from "../../domain/repositories/relatorio.repository.js";
-import {
+import type { RelatorioRepository } from "../../domain/repositories/relatorio.repository.js";
+import type {
   ListarRelatoriosRequestDto,
   ListarRelatoriosResponseDto,
 } from "../dto/relatorio.dto.js";

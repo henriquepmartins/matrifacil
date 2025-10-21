@@ -1,7 +1,7 @@
 import { Aluno } from "../../domain/entities/aluno.entity";
 import { Responsavel } from "../../domain/entities/responsavel.entity";
 import { Matricula } from "../../domain/entities/matricula.entity";
-import {
+import type {
   AlunoRepository,
   MatriculaRepository,
   ResponsavelRepository,

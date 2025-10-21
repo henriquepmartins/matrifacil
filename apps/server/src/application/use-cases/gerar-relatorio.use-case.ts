@@ -1,9 +1,9 @@
-import { RelatorioRepository } from "../../domain/repositories/relatorio.repository.js";
+import type { RelatorioRepository } from "../../domain/repositories/relatorio.repository.js";
 import { RelatorioEntity } from "../../domain/entities/relatorio.entity.js";
 import { RelatorioFiltrosValueObject } from "../../domain/value-objects/relatorio-filtros.value-object.js";
-import { PdfGeneratorService } from "../../infrastructure/services/pdf-generator.service.js";
-import { CsvGeneratorService } from "../../infrastructure/services/csv-generator.service.js";
-import {
+import type { PdfGeneratorService } from "../../infrastructure/services/pdf-generator.service.js";
+import type { CsvGeneratorService } from "../../infrastructure/services/csv-generator.service.js";
+import type {
   GerarRelatorioRequestDto,
   GerarRelatorioResponseDto,
 } from "../dto/relatorio.dto.js";

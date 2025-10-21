@@ -1,5 +1,5 @@
 import { z } from "zod";
-import {
+import type {
   TipoRelatorio,
   FormatoRelatorio,
   PeriodoRelatorio,
@@ -35,6 +35,15 @@ export const GerarRelatorioRequestSchema = z.object({
 export type GerarRelatorioRequestDto = z.infer<
   typeof GerarRelatorioRequestSchema
 >;
+
+export type GerarRelatorioResponseDto = {
+  buffer: Buffer;
+  nomeArquivo: string;
+  contentType: string;
+  tamanhoArquivo: number;
+};
+
+
 
 export const RelatorioMetadataSchema = z.object({
   id: z.string(),
@@ -110,9 +119,4 @@ export type ListarRelatoriosResponseDto = z.infer<
   typeof ListarRelatoriosResponseSchema
 >;
 
-export interface GerarRelatorioResponseDto {
-  buffer: Buffer;
-  nomeArquivo: string;
-  contentType: string;
-  tamanhoArquivo: number;
-}
+

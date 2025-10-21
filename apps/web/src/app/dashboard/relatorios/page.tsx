@@ -22,7 +22,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useRelatorios } from "@/lib/hooks/use-relatorios";
-import { GerarRelatorioRequest } from "@/infrastructure/api/relatorio-api.service";
+import type { GerarRelatorioRequest } from "@/infrastructure/api/relatorio-api.service";
 import { AlunoApiService } from "@/infrastructure/api/aluno-api.service";
 import { toast } from "sonner";
 

@@ -2,7 +2,7 @@ import { Matricula } from "../../domain/entities/matricula.entity";
 import { Aluno } from "../../domain/entities/aluno.entity";
 import { Responsavel } from "../../domain/entities/responsavel.entity";
 import { Turma } from "../../domain/entities/matricula.entity";
-import { MatriculaRepository } from "../../domain/repositories";
+import type { MatriculaRepository } from "../../domain/repositories";
 import { db } from "../database/database.config";
 import {
   matricula,

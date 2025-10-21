@@ -1,4 +1,4 @@
-import {
+import type {
   MatriculaRepository,
   TurmaRepository,
 } from "../../domain/repositories";

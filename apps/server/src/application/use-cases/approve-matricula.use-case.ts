@@ -1,5 +1,5 @@
 import { Matricula } from "../../domain/entities/matricula.entity";
-import { MatriculaRepository } from "../../domain/repositories";
+import type { MatriculaRepository } from "../../domain/repositories";
 import { MatriculaDomainService } from "../../domain/services/matricula.domain-service";
 
 export interface ApproveMatriculaRequest {

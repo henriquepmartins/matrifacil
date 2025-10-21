@@ -1,6 +1,6 @@
 import { db } from "./db";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 interface RequestConfig extends RequestInit {
   headers?: Record<string, string>;
