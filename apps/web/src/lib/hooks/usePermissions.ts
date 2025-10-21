@@ -27,8 +27,8 @@ export function usePermissions(): Permissions {
     // Turmas - COORDENACAO e ADMIN
     canAccessTurmas: role === "ADMIN" || role === "COORDENACAO",
 
-    // Relatórios - COORDENACAO e ADMIN
-    canAccessRelatorios: role === "ADMIN" || role === "COORDENACAO",
+    // Relatórios - todas as roles podem acessar
+    canAccessRelatorios: true,
 
     // Configurações - apenas ADMIN
     canAccessConfiguracoes: role === "ADMIN",

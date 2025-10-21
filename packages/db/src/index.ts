@@ -18,3 +18,4 @@ export const db = drizzle(pool);
 // Export schemas
 export * from "./schema/auth";
 export * from "./schema/matriculas";
+export * from "./schema/relatorios";

@@ -56,7 +56,6 @@ export default function NovaMatriculaPage() {
   const [observacoes, setObservacoes] = useState<string>("");
   const [docsSelecionados, setDocsSelecionados] = useState<string[]>([]);
 
-  // Pré-matrículas abertas
   const { data: pres, isLoading: loadingPres } = useQuery({
     queryKey: ["pre-matriculas", searchPre],
     queryFn: async (): Promise<PreResumo[]> => {
@@ -76,7 +75,6 @@ export default function NovaMatriculaPage() {
     [pres, selectedPreId]
   );
 
-  // Turmas com filtros
   const { data: turmas, isLoading: loadingTurmas } = useQuery({
     queryKey: ["turmas", etapaFiltro, turnoFiltro],
     queryFn: async (): Promise<TurmaResumo[]> => {

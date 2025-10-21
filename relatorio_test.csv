@@ -1,0 +1,6 @@
+ID,Protocolo,Status,Data Matrícula,Aluno,Etapa,Responsável,CPF,Telefone,Email,Turma,Turno
+c48df6f7-9d54-419a-a746-52e89994252e,PRE-2025-005,completo,2025-10-21 00:39:00.813,"Novo Aluno Teste",maternal,"Novo Responsável",12345678909,11988888888,novo@email.com,"Maternal A - Manhã",manha
+357f94dc-c99c-479f-99b7-1ab9cd45af48,PRE-2025-004,completo,2025-10-21 00:37:12.412,"João Silva Santos",bercario,"Maria Silva Santos",028.986.826-24,11987654321,maria.santos@email.com,"Berçário A - Manhã",manha
+06f4ac25-52a2-4231-ab8d-c6aebc0f522d,PRE-2025-003,completo,2025-10-21 00:34:54.798,"Teste Limpeza",maternal,"Responsável Teste",11144477735,11999999999,teste@email.com,"Maternal A - Manhã",manha
+d0f21791-5c3d-45f8-bae9-06d74fb390f6,PRE-2025-002,completo,2025-10-20 22:43:31.636,"João Silva Santos",maternal,"Maria Silva Santos",009.727.326-08,11987654321,maria.santos@email.com,"Maternal A - Manhã",manha
+bb3a8755-30e0-4001-9d81-4b8793749ed7,PRE-2025-001,completo,2025-10-20 22:44:39.199,"Maria Santos",maternal,"João Santos",98765432100,11987654321,maria.santos@email.com,"Maternal A - Manhã",manha

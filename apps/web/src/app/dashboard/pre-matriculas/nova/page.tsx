@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -23,12 +23,13 @@ import { ArrowLeft, Save, Loader2, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
+const preMatriculaSchema = z.object({
   aluno: z.object({
     nome: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
     dataNascimento: z.string().min(1, "Data de nascimento é obrigatória"),
     etapa: z.enum(["bercario", "maternal", "pre_escola", "fundamental"]),
-    necessidadesEspeciais: z.boolean(),
-    observacoes: z.string(),
+    necessidadesEspeciais: z.boolean().default(false),
+    observacoes: z.string().optional(),
     rg: z.string().optional(),
     cpf: z.string().optional(),
     naturalidade: z.string().optional(),
@@ -51,9 +52,8 @@ import { toast } from "sonner";
     endereco: z.string().min(5, "Endereço deve ter pelo menos 5 caracteres"),
     bairro: z.string().min(2, "Bairro deve ter pelo menos 2 caracteres"),
     email: z.string().optional(),
-    parentesco: z.string(),
-    autorizadoRetirada: z.boolean(),
- adicionais
+    parentesco: z.string().optional(),
+    autorizadoRetirada: z.boolean().default(true),
     rg: z.string().optional(),
     dataNascimento: z.string().optional(),
     naturalidade: z.string().optional(),
@@ -69,13 +69,13 @@ import { toast } from "sonner";
   contatosEmergencia: z
     .array(
       z.object({
-        nome: z.string().min(2, "Nome é obrigatório"),
-        telefone: z.string().min(10, "Telefone é obrigatório"),
-        parentesco: z.string().min(2, "Parentesco é obrigatório"),
+        nome: z.string().optional(),
+        telefone: z.string().optional(),
+        parentesco: z.string().optional(),
         observacoes: z.string().optional(),
       })
     )
-    .min(1, "Pelo menos um contato de emergência é obrigatório"),
+    .optional(),
   observacoes: z.string().optional(),
 });
 
@@ -83,7 +83,7 @@ type PreMatriculaFormData = z.infer<typeof preMatriculaSchema>;
 
 export default function NovaPreMatriculaPage() {
   const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const queryClient = useQueryClient();
 
   const {
     register,
@@ -105,14 +105,7 @@ export default function NovaPreMatriculaPage() {
         autorizadoRetirada: true,
         nacionalidade: "Brasileira",
       },
-      contatosEmergencia: [
-        {
-          nome: "",
-          telefone: "",
-          parentesco: "",
-          observacoes: "",
-        },
-      ],
+      contatosEmergencia: [],
     },
   });
 
@@ -124,17 +117,24 @@ export default function NovaPreMatriculaPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ...data,
           aluno: {
-            ...data.aluno,
+            nome: data.aluno.nome,
             dataNascimento: new Date(data.aluno.dataNascimento),
+            etapa: data.aluno.etapa,
+            necessidadesEspeciais: data.aluno.necessidadesEspeciais,
+            observacoes: data.aluno.observacoes,
           },
           responsavel: {
-            ...data.responsavel,
-            dataNascimento: data.responsavel.dataNascimento
-              ? new Date(data.responsavel.dataNascimento)
-              : undefined,
+            nome: data.responsavel.nome,
+            cpf: data.responsavel.cpf,
+            telefone: data.responsavel.telefone,
+            endereco: data.responsavel.endereco,
+            bairro: data.responsavel.bairro,
+            email: data.responsavel.email,
+            parentesco: data.responsavel.parentesco,
+            autorizadoRetirada: data.responsavel.autorizadoRetirada,
           },
+          observacoes: data.observacoes,
         }),
       });
 
@@ -147,17 +147,100 @@ export default function NovaPreMatriculaPage() {
     },
     onSuccess: () => {
       toast.success("Pré-matrícula criada com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["pre-matriculas"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       router.push("/dashboard/pre-matriculas");
     },
     onError: (error: Error) => {
       toast.error(error.message);
-      setIsSubmitting(false);
     },
   });
 
   const onSubmit = (data: PreMatriculaFormData) => {
-    setIsSubmitting(true);
     createPreMatriculaMutation.mutate(data);
+  };
+
+  // Função para preencher o formulário automaticamente (apenas em desenvolvimento)
+  const preencherFormularioTeste = () => {
+    if (process.env.NODE_ENV !== "development") return;
+
+    const dadosTeste: PreMatriculaFormData = {
+      aluno: {
+        nome: "João Silva Santos",
+        dataNascimento: "2020-05-15",
+        etapa: "maternal",
+        necessidadesEspeciais: false,
+        observacoes: "Aluno tranquilo e adaptável",
+        rg: "12.345.678-9",
+        cpf: "12345678901",
+        naturalidade: "São Paulo",
+        nacionalidade: "Brasileira",
+        sexo: "M",
+        corRaca: "Parda",
+        tipoSanguineo: "O+",
+        alergias: "Nenhuma",
+        medicamentos: "Nenhum",
+        doencas: "Nenhuma",
+        carteiraVacina: true,
+        observacoesSaude: "Criança saudável",
+      },
+      responsavel: {
+        nome: "Maria Silva Santos",
+        cpf: "98765432100",
+        telefone: "11987654321",
+        endereco: "Rua das Flores, 123",
+        bairro: "Centro",
+        email: "maria.santos@email.com",
+        parentesco: "mãe",
+        autorizadoRetirada: true,
+        rg: "98.765.432-1",
+        dataNascimento: "1985-03-20",
+        naturalidade: "São Paulo",
+        nacionalidade: "Brasileira",
+        sexo: "F",
+        estadoCivil: "Casado",
+        profissao: "Professora",
+        localTrabalho: "Escola Municipal",
+        telefoneTrabalho: "1133334444",
+        rendaFamiliar: "R$ 3.000,00",
+      },
+      contatosEmergencia: [
+        {
+          nome: "José Silva Santos",
+          telefone: "11999888777",
+          parentesco: "pai",
+          observacoes: "Contato de emergência principal",
+        },
+        {
+          nome: "Ana Silva",
+          telefone: "11988776655",
+          parentesco: "avó",
+          observacoes: "Contato secundário",
+        },
+      ],
+      observacoes:
+        "Família muito presente e comprometida com a educação da criança.",
+    };
+
+    // Preencher todos os campos do formulário
+    Object.keys(dadosTeste.aluno).forEach((key) => {
+      setValue(
+        `aluno.${key}` as any,
+        dadosTeste.aluno[key as keyof typeof dadosTeste.aluno]
+      );
+    });
+
+    Object.keys(dadosTeste.responsavel).forEach((key) => {
+      setValue(
+        `responsavel.${key}` as any,
+        dadosTeste.responsavel[key as keyof typeof dadosTeste.responsavel]
+      );
+    });
+
+    setValue("contatosEmergencia", dadosTeste.contatosEmergencia);
+    setValue("observacoes", dadosTeste.observacoes);
+
+    toast.success("Formulário preenchido automaticamente!");
   };
 
   const formatCPF = (value: string) => {
@@ -226,6 +309,46 @@ export default function NovaPreMatriculaPage() {
             </p>
           </div>
         </div>
+
+        {/* Botão de preenchimento automático (apenas em desenvolvimento) */}
+        {process.env.NODE_ENV === "development" && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={preencherFormularioTeste}
+            className="flex items-center gap-2"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="lucide lucide-wand-2"
+            >
+              <path d="M15 4V2"></path>
+              <path d="M15 16v-2"></path>
+              <path d="M8 9h2"></path>
+              <path d="M20 9h2"></path>
+              <path d="M17.8 11.2 19 12l-1.2.8"></path>
+              <path d="M6.2 11.2 5 12l1.2.8"></path>
+              <path d="M17.8 12.8 19 12l-1.2-.8"></path>
+              <path d="M6.2 12.8 5 12l1.2-.8"></path>
+              <path d="M12 2v2"></path>
+              <path d="M12 20v2"></path>
+              <path d="M4.93 4.93l1.41 1.41"></path>
+              <path d="M17.66 17.66l1.41 1.41"></path>
+              <path d="M4.93 19.07l1.41-1.41"></path>
+              <path d="M17.66 6.34l1.41-1.41"></path>
+            </svg>
+            Preencher Teste
+          </Button>
+        )}
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -858,8 +981,8 @@ export default function NovaPreMatriculaPage() {
           <Button type="button" variant="outline" asChild>
             <Link href="/dashboard/pre-matriculas">Cancelar</Link>
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? (
+          <Button type="submit" disabled={createPreMatriculaMutation.isPending}>
+            {createPreMatriculaMutation.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Salvando...

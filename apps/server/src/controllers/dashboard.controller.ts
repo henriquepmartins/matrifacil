@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import { preMatriculaService } from "../services/pre-matricula.service.js";
 import { AppError } from "../middlewares/error.middleware.js";
 
@@ -222,6 +222,12 @@ export const createPreMatricula = async (req: Request, res: Response) => {
 export const getPreMatriculaById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "ID é obrigatório",
+      });
+    }
     const preMatricula = await preMatriculaService.getPreMatriculaById(id);
 
     res.json({
@@ -454,6 +460,13 @@ export const deleteMatricula = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "ID é obrigatório",
+      });
+    }
+
     await preMatriculaService.deleteMatricula(id);
 
     res.json({
@@ -461,6 +474,8 @@ export const deleteMatricula = async (req: Request, res: Response) => {
       message: "Matrícula deletada com sucesso",
     });
   } catch (error) {
+    console.error("Erro ao deletar matrícula:", error);
+
     if (error instanceof AppError) {
       res.status(error.statusCode).json({
         success: false,
@@ -497,6 +512,36 @@ export const approveMatricula = async (req: Request, res: Response) => {
       res.status(500).json({
         success: false,
         message: "Erro ao aprovar matrícula",
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
+  }
+};
+
+export const buscarAlunos = async (req: Request, res: Response) => {
+  try {
+    const { search, limit = 20 } = req.query;
+
+    const result = await preMatriculaService.buscarAlunos({
+      search: search as string | undefined,
+      limit: parseInt(limit as string),
+    });
+
+    res.json({
+      success: true,
+      data: result,
+      total: result.length,
+    });
+  } catch (error) {
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "Erro ao buscar alunos",
         error: error instanceof Error ? error.message : "Erro desconhecido",
       });
     }

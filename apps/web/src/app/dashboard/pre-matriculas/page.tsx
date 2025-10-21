@@ -64,19 +64,26 @@ export default function PreMatriculasPage() {
     useState<PreMatricula | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  const { data: allPreMatriculas, isLoading } = useQuery({
+  const {
+    data: allPreMatriculas,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["pre-matriculas"],
     queryFn: async () => {
+      console.log("🔍 Buscando pré-matrículas...");
       const response = await fetch("http://localhost:3000/api/pre-matriculas");
+      console.log("📡 Response status:", response.status);
       if (!response.ok) {
         throw new Error("Erro ao buscar pré-matrículas");
       }
       const result = await response.json();
+      console.log("📊 Resultado da API:", result);
+      console.log("📋 Dados:", result.data);
       return result.data;
     },
   });
 
-  // Filtrar dados no lado do cliente
   const preMatriculas = allPreMatriculas?.filter((item: PreMatricula) => {
     const statusMatch =
       filtroStatus === "todos" || item.status === filtroStatus;
@@ -168,17 +175,20 @@ export default function PreMatriculasPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Pré-Matrículas</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Matrículas</h1>
           <p className="text-muted-foreground">
-            Gerencie as pré-matrículas e converta-as em matrículas completas.
+            Gerencie todas as matrículas, desde pré-matrículas até matrículas
+            completas.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/dashboard/pre-matriculas/nova">
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Pré-Matrícula
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild>
+            <Link href="/dashboard/pre-matriculas/nova">
+              <Plus className="h-4 w-4 mr-2" />
+              Nova Pré-Matrícula
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Filtros */}
@@ -200,6 +210,7 @@ export default function PreMatriculasPage() {
                 <SelectContent>
                   <SelectItem value="todos">Todos</SelectItem>
                   <SelectItem value="pre">Pré-Matrícula</SelectItem>
+                  <SelectItem value="completo">Matriculado</SelectItem>
                   <SelectItem value="pendente_doc">
                     Pendente Documentos
                   </SelectItem>

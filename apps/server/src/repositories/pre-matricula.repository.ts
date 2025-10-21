@@ -6,7 +6,7 @@ import {
   turma,
   documento,
 } from "@matrifacil-/db/schema/matriculas";
-import { eq, and, or, like, desc, asc, isNull } from "drizzle-orm";
+import { eq, and, or, like, desc, asc, isNull, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
 export interface CreatePreMatriculaData {
@@ -188,7 +188,7 @@ export class PreMatriculaRepository {
             data.alunoObservacoes !== undefined
               ? data.alunoObservacoes
               : existing.aluno.observacoes,
-          updatedAt: new Date(),
+          // Remover updatedAt - ele tem defaultNow()
         })
         .where(eq(aluno.id, existing.aluno.id));
     }
@@ -221,7 +221,7 @@ export class PreMatriculaRepository {
             data.responsavelAutorizadoRetirada !== undefined
               ? data.responsavelAutorizadoRetirada
               : existing.responsavel.autorizadoRetirada,
-          updatedAt: new Date(),
+          // Remover updatedAt - ele tem defaultNow()
         })
         .where(eq(responsavel.id, existing.responsavel.id));
     }
@@ -231,7 +231,7 @@ export class PreMatriculaRepository {
         .update(matricula)
         .set({
           observacoes: data.observacoes,
-          updatedAt: new Date(),
+          // Remover updatedAt - ele tem defaultNow()
         })
         .where(eq(matricula.id, id));
     }
@@ -254,7 +254,7 @@ export class PreMatriculaRepository {
       .set({
         status: "completo",
         dataMatricula: new Date(),
-        updatedAt: new Date(),
+        // Remover updatedAt - ele tem defaultNow()
       })
       .where(eq(matricula.id, id));
 
@@ -262,7 +262,7 @@ export class PreMatriculaRepository {
       .update(aluno)
       .set({
         status: "completo",
-        updatedAt: new Date(),
+        // Remover updatedAt - ele tem defaultNow()
       })
       .where(eq(aluno.id, existing.aluno.id));
 
@@ -270,13 +270,23 @@ export class PreMatriculaRepository {
   }
 
   async deleteMatricula(id: string): Promise<boolean> {
-    const existing = await this.findById(id);
+    const existing = await this.findByIdAny(id);
     if (!existing) {
       return false;
     }
 
-    await db.delete(matricula).where(eq(matricula.id, id));
-    return true;
+    try {
+      // Deletar documentos relacionados primeiro
+      await db.delete(documento).where(eq(documento.matriculaId, id));
+
+      // Deletar a matrícula
+      await db.delete(matricula).where(eq(matricula.id, id));
+
+      return true;
+    } catch (error) {
+      console.error("Erro ao deletar matrícula:", error);
+      return false;
+    }
   }
 
   async findResponsavelByCPF(cpfValue: string): Promise<{ id: string } | null> {
@@ -325,29 +335,45 @@ export class PreMatriculaRepository {
         status: "pre",
         necessidadesEspeciais: data.aluno.necessidadesEspeciais || false,
         observacoes: data.aluno.observacoes,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        // Remover createdAt e updatedAt - eles têm defaultNow()
       })
       .returning();
 
     const responsavelId = uuidv4();
-    const [newResponsavel] = await db
-      .insert(responsavel)
-      .values({
-        id: responsavelId,
-        idGlobal: uuidv4(),
-        nome: data.responsavel.nome,
-        cpf: data.responsavel.cpf,
-        telefone: data.responsavel.telefone,
-        endereco: data.responsavel.endereco,
-        bairro: data.responsavel.bairro,
-        email: data.responsavel.email,
-        parentesco: data.responsavel.parentesco || "pai",
-        autorizadoRetirada: data.responsavel.autorizadoRetirada ?? true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .returning();
+    const idGlobal = uuidv4();
+
+    // Usar SQL raw para inserir apenas os campos necessários
+    console.log("🔍 Tentando inserir responsável:", {
+      id: responsavelId,
+      nome: data.responsavel.nome,
+      cpf: data.responsavel.cpf,
+    });
+
+    let newResponsavel;
+    try {
+      const result = await db.execute(sql`
+        INSERT INTO responsavel (
+          id, id_global, nome, cpf, telefone, endereco, bairro, email
+        ) VALUES (
+          ${responsavelId}, ${idGlobal}, ${data.responsavel.nome}, ${data.responsavel.cpf}, 
+          ${data.responsavel.telefone}, ${data.responsavel.endereco}, ${data.responsavel.bairro}, 
+          ${data.responsavel.email}
+        ) RETURNING id, nome, cpf
+      `);
+
+      console.log("✅ Responsável inserido com sucesso:", result.rows[0]);
+      newResponsavel = result.rows[0];
+    } catch (error) {
+      console.error("❌ Erro detalhado ao inserir responsável:", {
+        message: error.message,
+        code: error.code,
+        detail: error.detail,
+        hint: error.hint,
+        constraint: error.constraint,
+        fullError: error,
+      });
+      throw error;
+    }
 
     const matriculaId = uuidv4();
     const [newMatricula] = await db
@@ -360,8 +386,7 @@ export class PreMatriculaRepository {
         responsavelId: responsavelId,
         status: "pre",
         observacoes: data.observacoes,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        // Remover createdAt e updatedAt - eles têm defaultNow()
       })
       .returning();
 
@@ -646,7 +671,7 @@ export class PreMatriculaRepository {
         .update(aluno)
         .set({
           ...data.aluno,
-          updatedAt: new Date(),
+          // Remover updatedAt - ele tem defaultNow()
         })
         .where(eq(aluno.id, existing.aluno.id));
     }
@@ -656,7 +681,7 @@ export class PreMatriculaRepository {
         .update(responsavel)
         .set({
           ...data.responsavel,
-          updatedAt: new Date(),
+          // Remover updatedAt - ele tem defaultNow()
         })
         .where(eq(responsavel.id, existing.responsavel.id));
     }
@@ -665,7 +690,7 @@ export class PreMatriculaRepository {
       .update(matricula)
       .set({
         observacoes: data.observacoes,
-        updatedAt: new Date(),
+        // Remover updatedAt - ele tem defaultNow()
       })
       .where(eq(matricula.id, id));
 
@@ -701,7 +726,7 @@ export class PreMatriculaRepository {
         status: "completo",
         dataMatricula: dataMatriculaOverride || new Date(),
         turmaId: finalTurmaId,
-        updatedAt: new Date(),
+        // Remover updatedAt - ele tem defaultNow()
       })
       .where(eq(matricula.id, id));
 
@@ -709,7 +734,7 @@ export class PreMatriculaRepository {
       .update(aluno)
       .set({
         status: "completo",
-        updatedAt: new Date(),
+        // Remover updatedAt - ele tem defaultNow()
       })
       .where(eq(aluno.id, existing.aluno.id));
 
@@ -722,7 +747,7 @@ export class PreMatriculaRepository {
           status: "pendente",
           observacoes: d.observacoes,
           createdAt: new Date(),
-          updatedAt: new Date(),
+          // Remover updatedAt - ele tem defaultNow()
         }))
       );
     }

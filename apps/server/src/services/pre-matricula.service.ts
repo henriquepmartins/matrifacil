@@ -189,11 +189,11 @@ export class PreMatriculaService {
     this.validateCreateData(data);
 
     // Verificar se CPF já existe (responsável possui unique index)
-    const existingResponsavel =
-      await preMatriculaRepository.findResponsavelByCPF(data.responsavel.cpf);
-    if (existingResponsavel) {
-      throw new AppError(400, "Já existe uma pré-matrícula com este CPF");
-    }
+    // const existingResponsavel =
+    //   await preMatriculaRepository.findResponsavelByCPF(data.responsavel.cpf);
+    // if (existingResponsavel) {
+    //   throw new AppError(400, "Já existe uma pré-matrícula com este CPF");
+    // }
 
     return preMatriculaRepository.createPreMatricula(data);
   }
@@ -385,6 +385,35 @@ export class PreMatriculaService {
     }
 
     return result;
+  }
+
+  async buscarAlunos(filters: { search?: string; limit?: number }) {
+    const { search, limit = 20 } = filters;
+
+    // Busca alunos tanto de pré-matrículas quanto de matrículas completas
+    const matriculas = await preMatriculaRepository.findAllMatriculas({
+      search,
+      limit,
+    });
+
+    // Extrai dados únicos dos alunos
+    const alunosMap = new Map();
+
+    matriculas.forEach((matricula) => {
+      if (matricula.aluno) {
+        const alunoId = matricula.aluno.id;
+        if (!alunosMap.has(alunoId)) {
+          alunosMap.set(alunoId, {
+            id: matricula.aluno.id,
+            nome: matricula.aluno.nome,
+            responsavel: matricula.responsavel?.nome,
+            protocolo: matricula.protocoloLocal,
+          });
+        }
+      }
+    });
+
+    return Array.from(alunosMap.values()).slice(0, limit);
   }
 }
 

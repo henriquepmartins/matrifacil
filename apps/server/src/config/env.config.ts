@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import path from "path";
 
 // Carrega variáveis de ambiente
-dotenv.config({ path: path.resolve(process.cwd(), ".env") });
+dotenv.config({ path: path.resolve(process.cwd(), "apps/server/.env") });
 
 const envSchema = z.object({
   PORT: z.string().default("8080"),

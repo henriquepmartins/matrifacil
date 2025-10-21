@@ -23,7 +23,7 @@ const statusConfig = {
       "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
   },
   completo: {
-    label: "Completo",
+    label: "Matriculado",
     variant: "secondary" as const,
     className:
       "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",

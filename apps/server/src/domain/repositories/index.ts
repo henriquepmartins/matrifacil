@@ -52,3 +52,5 @@ export interface TurmaRepository {
   update(turma: Turma): Promise<Turma>;
   delete(id: string): Promise<void>;
 }
+
+export * from "./relatorio.repository";

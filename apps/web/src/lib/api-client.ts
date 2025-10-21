@@ -1,6 +1,6 @@
 import { db } from "./db";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 interface RequestConfig extends RequestInit {
   headers?: Record<string, string>;
