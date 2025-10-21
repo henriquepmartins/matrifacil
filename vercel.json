@@ -5,10 +5,5 @@
   "installCommand": "bun install --frozen-lockfile",
   "env": {
     "NEXT_PUBLIC_API_URL": "https://server-production-3365.up.railway.app"
-  },
-  "functions": {
-    "apps/web/src/app/api/**/*.ts": {
-      "runtime": "nodejs18.x"
-    }
   }
 }
