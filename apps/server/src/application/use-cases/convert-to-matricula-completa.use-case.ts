@@ -38,17 +38,14 @@ export class ConvertToMatriculaCompletaUseCase {
       throw new Error("Apenas pré-matrículas podem ser convertidas");
     }
 
-    let turmaId = request.turmaId;
-
-    // Se não foi fornecida turma, buscar a melhor turma disponível
-    if (!turmaId) {
-      turmaId = await this.turmaVagasService.encontrarMelhorTurma(
-        matricula.aluno.etapa
+    // A seleção de turma é obrigatória para criar a matrícula
+    if (!request.turmaId) {
+      throw new Error(
+        "A seleção de turma é obrigatória para criar a matrícula"
       );
-      if (!turmaId) {
-        throw new Error("Nenhuma turma disponível para esta etapa");
-      }
     }
+
+    const turmaId = request.turmaId;
 
     // Validar e decrementar vaga da turma
     await this.turmaVagasService.validarEDecrementarVaga(

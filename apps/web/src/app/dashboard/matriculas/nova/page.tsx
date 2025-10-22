@@ -75,6 +75,13 @@ export default function NovaMatriculaPage() {
     [pres, selectedPreId]
   );
 
+  // Auto-selecionar etapa quando pré-matrícula for selecionada
+  useEffect(() => {
+    if (selectedPre?.aluno?.etapa) {
+      setEtapaFiltro(selectedPre.aluno.etapa);
+    }
+  }, [selectedPre]);
+
   const { data: turmas, isLoading: loadingTurmas } = useQuery({
     queryKey: ["turmas", etapaFiltro, turnoFiltro],
     queryFn: async (): Promise<TurmaResumo[]> => {
@@ -94,6 +101,10 @@ export default function NovaMatriculaPage() {
     mutationFn: async () => {
       if (!selectedPreId) {
         throw new Error("Selecione uma pré-matrícula");
+      }
+
+      if (!turmaId) {
+        throw new Error("Selecione uma turma para a matrícula");
       }
 
       console.log("🎯 Criando matrícula:", {
@@ -260,7 +271,11 @@ export default function NovaMatriculaPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
             <div className="w-full">
               <Label className="mb-2 block">Etapa</Label>
-              <Select value={etapaFiltro} onValueChange={setEtapaFiltro}>
+              <Select
+                value={etapaFiltro}
+                onValueChange={setEtapaFiltro}
+                disabled={!!selectedPreId}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Selecione a etapa" />
                 </SelectTrigger>
@@ -358,7 +373,7 @@ export default function NovaMatriculaPage() {
           <div className="flex justify-end">
             <Button
               onClick={() => criarMatricula.mutate()}
-              disabled={!selectedPreId || criarMatricula.isPending}
+              disabled={!selectedPreId || !turmaId || criarMatricula.isPending}
             >
               {criarMatricula.isPending ? (
                 <>

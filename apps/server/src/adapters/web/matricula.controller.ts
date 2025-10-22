@@ -60,6 +60,14 @@ export class MatriculaController {
         return;
       }
 
+      if (!turmaId) {
+        res.status(400).json({
+          success: false,
+          message: "A seleção de turma é obrigatória",
+        });
+        return;
+      }
+
       const result = await this.convertToMatriculaCompletaUseCase.execute({
         matriculaId: id,
         turmaId,
