@@ -47,17 +47,11 @@ export class ConvertToMatriculaCompletaUseCase {
 
     const turmaId = request.turmaId;
 
-    // Validar e decrementar vaga da turma
-    await this.turmaVagasService.validarEDecrementarVaga(
+    // Validar e decrementar vaga da turma, retornando a turma validada
+    const turma = await this.turmaVagasService.validarEDecrementarVagaComTurma(
       turmaId,
       matricula.aluno.etapa
     );
-
-    // Buscar dados completos da turma
-    const turma = await this.turmaRepository.findById(turmaId);
-    if (!turma) {
-      throw new Error("Erro ao buscar dados da turma");
-    }
 
     const matriculaCompleta = matricula.converterParaCompleta(
       turma,
