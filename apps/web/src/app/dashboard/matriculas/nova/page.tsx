@@ -91,25 +91,49 @@ export default function NovaMatriculaPage() {
 
   const criarMatricula = useMutation({
     mutationFn: async () => {
-      if (!selectedPreId) throw new Error("Selecione uma pré-matrícula");
+      if (!selectedPreId) {
+        throw new Error("Selecione uma pré-matrícula");
+      }
+
+      console.log("🎯 Criando matrícula:", {
+        preMatriculaId: selectedPreId,
+        turmaId,
+        dataMatricula,
+        documentosIniciais: docsSelecionados,
+      });
+
+      const payload = {
+        turmaId: turmaId || null,
+        dataMatricula,
+        documentosIniciais: docsSelecionados.map((t) => ({ tipo: t })),
+        observacoes,
+      };
+
+      console.log("📦 Payload:", payload);
+
       const response = await fetch(
-        `${API_URL}/api/matriculas/from-pre/${selectedPreId}`,
+        `${API_URL}/api/pre-matriculas/${selectedPreId}/converter`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            turmaId: turmaId || null,
-            dataMatricula,
-            documentosIniciais: docsSelecionados.map((t) => ({ tipo: t })),
-            observacoes,
-          }),
+          headers: { 
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+          credentials: "include",
         }
       );
+
+      console.log("📡 Response status:", response.status);
+
       if (!response.ok) {
-        const e = await response.json().catch(() => ({}));
-        throw new Error(e.message || "Erro ao criar matrícula");
+        const errorData = await response.json().catch(() => ({}));
+        console.error("❌ Erro na resposta:", errorData);
+        throw new Error(errorData.message || `Erro ${response.status}: Falha ao criar matrícula`);
       }
-      return response.json();
+
+      const result = await response.json();
+      console.log("✅ Matrícula criada:", result);
+      return result;
     },
     onSuccess: () => {
       toast.success("Matrícula criada com sucesso!");
