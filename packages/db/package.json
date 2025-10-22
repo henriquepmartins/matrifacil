@@ -27,7 +27,7 @@
     }
   },
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --format=esm --outfile=dist/index.js --external:pg --external:drizzle-orm --external:dotenv --external:zod",
+    "build": "esbuild src/index.ts --bundle --format=esm --outfile=dist/index.js --external:pg --external:drizzle-orm --external:dotenv --external:zod && esbuild src/schema/matriculas.ts --bundle --format=esm --outfile=dist/schema/matriculas.js --external:pg --external:drizzle-orm --external:dotenv --external:zod && esbuild src/schema/auth.ts --bundle --format=esm --outfile=dist/schema/auth.js --external:pg --external:drizzle-orm --external:dotenv --external:zod && esbuild src/schema/relatorios.ts --bundle --format=esm --outfile=dist/schema/relatorios.js --external:pg --external:drizzle-orm --external:dotenv --external:zod && esbuild src/migrations/relations.ts --bundle --format=esm --outfile=dist/migrations/relations.js --external:pg --external:drizzle-orm --external:dotenv --external:zod && esbuild src/migrations/schema.ts --bundle --format=esm --outfile=dist/migrations/schema.js --external:pg --external:drizzle-orm --external:dotenv --external:zod",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:generate": "drizzle-kit generate",
