@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from "express";
+import type { Request, Response, NextFunction } from "@types/express";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.config.js";
 import { AppError } from "./error.middleware.js";

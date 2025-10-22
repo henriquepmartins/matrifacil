@@ -1,100 +1,178 @@
 import { Turma } from "../../domain/entities/matricula.entity";
 import type { TurmaRepository } from "../../domain/repositories";
+import { db } from "../database/database.config";
+import { turma } from "@matrifacil-/db/schema/matriculas.js";
+import { eq, and, sql, desc } from "drizzle-orm";
 
 export class DrizzleTurmaRepository implements TurmaRepository {
   async findById(id: string): Promise<Turma | null> {
-    return null;
-  }
+    const [result] = await db
+      .select()
+      .from(turma)
+      .where(eq(turma.id, id))
+      .limit(1);
 
-  async findByEtapa(etapa: string): Promise<Turma[]> {
-    return [];
-  }
-
-  async findAvailableByEtapa(etapa: string): Promise<Turma[]> {
-    return [];
-  }
-
-  async findBestForEtapa(etapa: string): Promise<Turma | null> {
-    const mockTurmas = [
-      {
-        id: "turma-1",
-        nome: "Berçário A",
-        etapa: "bercario",
-        turno: "integral",
-        capacidade: 15,
-        vagasDisponiveis: 3,
-      },
-      {
-        id: "turma-2",
-        nome: "Maternal A",
-        etapa: "maternal",
-        turno: "manha",
-        capacidade: 20,
-        vagasDisponiveis: 5,
-      },
-      {
-        id: "turma-3",
-        nome: "Maternal B",
-        etapa: "maternal",
-        turno: "tarde",
-        capacidade: 20,
-        vagasDisponiveis: 0,
-      },
-      {
-        id: "turma-4",
-        nome: "Pré-Escola A",
-        etapa: "pre_escola",
-        turno: "manha",
-        capacidade: 25,
-        vagasDisponiveis: 8,
-      },
-      {
-        id: "turma-5",
-        nome: "Pré-Escola B",
-        etapa: "pre_escola",
-        turno: "tarde",
-        capacidade: 25,
-        vagasDisponiveis: 5,
-      },
-      {
-        id: "turma-6",
-        nome: "Fundamental A",
-        etapa: "fundamental",
-        turno: "manha",
-        capacidade: 30,
-        vagasDisponiveis: 10,
-      },
-    ];
-
-    const turmasDisponiveis = mockTurmas.filter(
-      (t) => t.etapa === etapa && t.vagasDisponiveis > 0
-    );
-
-    if (turmasDisponiveis.length === 0) {
+    if (!result) {
       return null;
     }
 
-    const turma = turmasDisponiveis[0];
+    return this.mapToTurma(result);
+  }
+
+  async findByEtapa(etapa: string): Promise<Turma[]> {
+    const results = await db
+      .select()
+      .from(turma)
+      .where(eq(turma.etapa, etapa as any))
+      .orderBy(desc(turma.nome));
+
+    return results.map(this.mapToTurma);
+  }
+
+  async findAvailableByEtapa(etapa: string): Promise<Turma[]> {
+    const results = await db
+      .select()
+      .from(turma)
+      .where(
+        and(
+          eq(turma.etapa, etapa as any),
+          eq(turma.ativa, true),
+          sql`${turma.vagasDisponiveis} > 0`
+        )
+      )
+      .orderBy(desc(turma.vagasDisponiveis), desc(turma.nome));
+
+    return results.map(this.mapToTurma);
+  }
+
+  async findBestForEtapa(etapa: string): Promise<Turma | null> {
+    const results = await db
+      .select()
+      .from(turma)
+      .where(
+        and(
+          eq(turma.etapa, etapa as any),
+          eq(turma.ativa, true),
+          sql`${turma.vagasDisponiveis} > 0`
+        )
+      )
+      .orderBy(desc(turma.vagasDisponiveis), desc(turma.nome))
+      .limit(1);
+
+    if (results.length === 0) {
+      return null;
+    }
+
+    return this.mapToTurma(results[0]);
+  }
+
+  async decrementarVaga(turmaId: string): Promise<void> {
+    await db
+      .update(turma)
+      .set({
+        vagasDisponiveis: sql`${turma.vagasDisponiveis} - 1`,
+      })
+      .where(eq(turma.id, turmaId));
+  }
+
+  async incrementarVaga(turmaId: string): Promise<void> {
+    await db
+      .update(turma)
+      .set({
+        vagasDisponiveis: sql`${turma.vagasDisponiveis} + 1`,
+      })
+      .where(eq(turma.id, turmaId));
+  }
+
+  async validarVagasDisponiveis(turmaId: string): Promise<boolean> {
+    const [result] = await db
+      .select({ vagasDisponiveis: turma.vagasDisponiveis })
+      .from(turma)
+      .where(eq(turma.id, turmaId))
+      .limit(1);
+
+    return result ? result.vagasDisponiveis > 0 : false;
+  }
+
+  async validarTurmaAtiva(turmaId: string): Promise<boolean> {
+    const [result] = await db
+      .select({ ativa: turma.ativa })
+      .from(turma)
+      .where(eq(turma.id, turmaId))
+      .limit(1);
+
+    return result ? result.ativa : false;
+  }
+
+  async validarEtapaCompativel(
+    turmaId: string,
+    etapaAluno: string
+  ): Promise<boolean> {
+    const [result] = await db
+      .select({ etapa: turma.etapa })
+      .from(turma)
+      .where(eq(turma.id, turmaId))
+      .limit(1);
+
+    return result ? result.etapa === etapaAluno : false;
+  }
+
+  async save(turmaEntity: Turma): Promise<Turma> {
+    const [result] = await db
+      .insert(turma)
+      .values({
+        id: turmaEntity.id,
+        idGlobal: turmaEntity.idGlobal,
+        nome: turmaEntity.nome,
+        etapa: turmaEntity.etapa,
+        turno: turmaEntity.turno,
+        capacidade: turmaEntity.capacidade,
+        vagasDisponiveis: turmaEntity.vagasDisponiveis,
+        anoLetivo: turmaEntity.anoLetivo,
+        ativa: turmaEntity.ativa,
+        createdAt: turmaEntity.createdAt,
+        updatedAt: turmaEntity.updatedAt,
+      })
+      .returning();
+
+    return this.mapToTurma(result);
+  }
+
+  async update(turmaEntity: Turma): Promise<Turma> {
+    await db
+      .update(turma)
+      .set({
+        nome: turmaEntity.nome,
+        etapa: turmaEntity.etapa,
+        turno: turmaEntity.turno,
+        capacidade: turmaEntity.capacidade,
+        vagasDisponiveis: turmaEntity.vagasDisponiveis,
+        anoLetivo: turmaEntity.anoLetivo,
+        ativa: turmaEntity.ativa,
+        updatedAt: new Date(),
+      })
+      .where(eq(turma.id, turmaEntity.id));
+
+    return this.findById(turmaEntity.id) as Promise<Turma>;
+  }
+
+  async delete(id: string): Promise<void> {
+    await db.delete(turma).where(eq(turma.id, id));
+  }
+
+  private mapToTurma(result: any): Turma {
     return Turma.create({
-      id: turma.id,
-      idGlobal: turma.id,
-      etapa: turma.etapa,
-      turno: turma.turno as any,
-      capacidade: turma.capacidade,
-      vagasDisponiveis: turma.vagasDisponiveis,
-      anoLetivo: "2024",
-      nome: turma.nome,
-      ativa: true,
+      id: result.id,
+      idGlobal: result.idGlobal,
+      nome: result.nome,
+      etapa: result.etapa,
+      turno: result.turno as any,
+      capacidade: result.capacidade,
+      vagasDisponiveis: result.vagasDisponiveis,
+      anoLetivo: result.anoLetivo,
+      ativa: result.ativa,
+      createdAt: result.createdAt,
+      updatedAt: result.updatedAt,
     });
   }
-
-  async save(turma: Turma): Promise<Turma> {
-    return turma;
-  }
-
-  async update(turma: Turma): Promise<Turma> {
-    return turma;
-  }
-
-  async delete(id: string): Promise<void> {}
 }

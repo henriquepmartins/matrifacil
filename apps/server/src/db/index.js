@@ -1,5 +1,6 @@
-const { drizzle } = require("drizzle-orm/node-postgres");
-const { Pool } = require("pg");
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
+import { sql } from "drizzle-orm";
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -31,28 +32,25 @@ const pool = new Pool({
   keepAliveInitialDelayMillis: 0,
 });
 
-const db = drizzle(pool);
+export const db = drizzle(pool);
 
-module.exports = { db };
-
-module.exports.checkDatabaseConnection = async function () {
+export async function checkDatabaseConnection() {
   try {
-    const { sql } = require("drizzle-orm");
     await db.execute(sql`SELECT 1`);
     return true;
   } catch (error) {
     console.error("❌ Erro ao conectar ao banco de dados:", error);
     return false;
   }
-};
+}
 
-module.exports.initializeDatabase = async function () {
+export async function initializeDatabase() {
   console.log("🔌 Conectando ao banco de dados...");
-  const isConnected = await module.exports.checkDatabaseConnection();
+  const isConnected = await checkDatabaseConnection();
 
   if (!isConnected) {
     throw new Error("Falha ao conectar ao banco de dados");
   }
 
   console.log("✅ Banco de dados conectado com sucesso!");
-};
+}

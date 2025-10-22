@@ -11,6 +11,14 @@ import { db } from "../config/database.config.js";
 import { turma } from "@matrifacil-/db/schema/matriculas.js";
 import { eq } from "drizzle-orm";
 
+/**
+ * @deprecated Esta classe será removida em versão futura.
+ * Use os Use Cases domain-driven em vez disso:
+ * - CreatePreMatriculaUseCase
+ * - ConvertToMatriculaCompletaUseCase
+ * - ApproveMatriculaUseCase
+ * - GetMatriculasUseCase
+ */
 export class PreMatriculaService {
   private validateCPF(cpf: string): boolean {
     const cleanCPF = cpf.replace(/\D/g, "");

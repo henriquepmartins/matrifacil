@@ -1,9 +1,14 @@
 import { z } from "zod";
 import dotenv from "dotenv";
 import path from "path";
+import fs from "fs";
 
 // Carrega variáveis de ambiente
-dotenv.config({ path: path.resolve(process.cwd(), "apps/server/.env") });
+// Tenta carregar de apps/server/.env (quando executado da raiz) ou .env (quando executado do diretório do servidor)
+const envPath = path.resolve(process.cwd(), "apps/server/.env");
+const localEnvPath = path.resolve(process.cwd(), ".env");
+const envFile = fs.existsSync(envPath) ? envPath : localEnvPath;
+dotenv.config({ path: envFile });
 
 const envSchema = z.object({
   PORT: z.string().default("8080"),

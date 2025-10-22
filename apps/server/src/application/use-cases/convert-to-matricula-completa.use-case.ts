@@ -4,6 +4,7 @@ import type {
   TurmaRepository,
 } from "../../domain/repositories";
 import { MatriculaDomainService } from "../../domain/services/matricula.domain-service";
+import { TurmaVagasService } from "../../domain/services/turma-vagas.service";
 
 export interface ConvertToMatriculaCompletaRequest {
   matriculaId: string;
@@ -19,7 +20,8 @@ export class ConvertToMatriculaCompletaUseCase {
   constructor(
     private matriculaRepository: MatriculaRepository,
     private turmaRepository: TurmaRepository,
-    private domainService: MatriculaDomainService
+    private domainService: MatriculaDomainService,
+    private turmaVagasService: TurmaVagasService
   ) {}
 
   async execute(
@@ -36,19 +38,28 @@ export class ConvertToMatriculaCompletaUseCase {
       throw new Error("Apenas pré-matrículas podem ser convertidas");
     }
 
-    let turma = matricula.turma;
-    if (request.turmaId) {
-      turma = await this.turmaRepository.findById(request.turmaId);
-      if (!turma) {
-        throw new Error("Turma não encontrada");
-      }
-    } else if (!turma) {
-      turma = await this.turmaRepository.findBestForEtapa(
+    let turmaId = request.turmaId;
+
+    // Se não foi fornecida turma, buscar a melhor turma disponível
+    if (!turmaId) {
+      turmaId = await this.turmaVagasService.encontrarMelhorTurma(
         matricula.aluno.etapa
       );
-      if (!turma) {
+      if (!turmaId) {
         throw new Error("Nenhuma turma disponível para esta etapa");
       }
+    }
+
+    // Validar e decrementar vaga da turma
+    await this.turmaVagasService.validarEDecrementarVaga(
+      turmaId,
+      matricula.aluno.etapa
+    );
+
+    // Buscar dados completos da turma
+    const turma = await this.turmaRepository.findById(turmaId);
+    if (!turma) {
+      throw new Error("Erro ao buscar dados da turma");
     }
 
     const matriculaCompleta = matricula.converterParaCompleta(

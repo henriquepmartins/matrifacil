@@ -1,8 +1,8 @@
-const { defineConfig } = require("tsdown");
+import { defineConfig } from "tsdown";
 
-module.exports = defineConfig({
+export default defineConfig({
   entry: ["src/index.ts"],
-  format: ["cjs"],
+  format: ["esm"],
   clean: true,
   dts: false,
 });

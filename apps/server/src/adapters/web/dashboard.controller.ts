@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "@types/express";
 import { GetDashboardStatsUseCase } from "../../application/use-cases/get-dashboard-stats.use-case";
 import { container } from "../../infrastructure/config/container.config";
 

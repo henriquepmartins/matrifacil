@@ -16,11 +16,13 @@ const dashboardController = container.get<DashboardController>(
   "dashboardController"
 );
 
+// Dashboard stats
 router.get(
   "/api/dashboard/stats",
   dashboardController.getStats.bind(dashboardController)
 );
 
+// Matrículas - usando controllers domain-driven
 router.get(
   "/api/matriculas",
   matriculaController.getMatriculas.bind(matriculaController)
@@ -42,13 +44,9 @@ router.post(
   matriculaController.approveMatricula.bind(matriculaController)
 );
 
-// Rota para deletar matrícula
+// Rotas auxiliares (mantendo do dashboard.controller.ts por enquanto)
 router.delete("/api/matriculas/:id", deleteMatricula);
-
-// Rota para buscar alunos (autocomplete)
 router.get("/api/matriculas/buscar-alunos", buscarAlunos);
-
-// Rota para buscar turmas
 router.get("/api/turmas", getTurmas);
 
 export default router;

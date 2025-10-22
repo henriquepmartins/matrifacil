@@ -87,6 +87,10 @@ export interface PreMatriculaWithDetails {
   } | null;
 }
 
+/**
+ * @deprecated Esta classe será removida em versão futura.
+ * Use DrizzleMatriculaRepository e DrizzleTurmaRepository em vez disso.
+ */
 export class PreMatriculaRepository {
   async findBestTurmaForEtapa(
     etapa: string
@@ -239,7 +243,10 @@ export class PreMatriculaRepository {
     return this.findById(id) as Promise<PreMatriculaWithDetails>;
   }
 
-  async approveMatricula(id: string, turmaId?: string): Promise<PreMatriculaWithDetails | null> {
+  async approveMatricula(
+    id: string,
+    turmaId?: string
+  ): Promise<PreMatriculaWithDetails | null> {
     const existing = await this.findById(id);
     if (!existing) {
       return null;

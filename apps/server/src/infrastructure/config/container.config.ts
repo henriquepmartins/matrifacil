@@ -11,6 +11,7 @@ import { GetDashboardStatsUseCase } from "../../application/use-cases/get-dashbo
 import { GerarRelatorioUseCase } from "../../application/use-cases/gerar-relatorio.use-case";
 import { ListarRelatoriosGeradosUseCase } from "../../application/use-cases/listar-relatorios-gerados.use-case";
 import { MatriculaDomainService } from "../../domain/services/matricula.domain-service";
+import { TurmaVagasService } from "../../domain/services/turma-vagas.service";
 import { MatriculaController } from "../../adapters/web/matricula.controller";
 import { DashboardController } from "../../adapters/web/dashboard.controller";
 import { RelatorioController } from "../../adapters/web/relatorio.controller";
@@ -51,6 +52,10 @@ export class Container {
 
     // Services
     this.dependencies.set("domainService", new MatriculaDomainService());
+    this.dependencies.set(
+      "turmaVagasService",
+      new TurmaVagasService(this.get("turmaRepository"))
+    );
     this.dependencies.set("pdfGenerator", new PdfGeneratorServiceImpl());
     this.dependencies.set("csvGenerator", new CsvGeneratorServiceImpl());
 
@@ -71,7 +76,8 @@ export class Container {
       new ConvertToMatriculaCompletaUseCase(
         this.get("matriculaRepository"),
         this.get("turmaRepository"),
-        this.get("domainService")
+        this.get("domainService"),
+        this.get("turmaVagasService")
       )
     );
 
@@ -87,7 +93,9 @@ export class Container {
       "approveMatriculaUseCase",
       new ApproveMatriculaUseCase(
         this.get("matriculaRepository"),
-        this.get("domainService")
+        this.get("turmaRepository"),
+        this.get("domainService"),
+        this.get("turmaVagasService")
       )
     );
 

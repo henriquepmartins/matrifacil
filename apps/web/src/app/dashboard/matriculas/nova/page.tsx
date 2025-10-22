@@ -61,6 +61,7 @@ export default function NovaMatriculaPage() {
     queryKey: ["pre-matriculas", searchPre],
     queryFn: async (): Promise<PreResumo[]> => {
       const params = new URLSearchParams();
+      params.set("status", "pre"); // Filtrar apenas pré-matrículas não aprovadas
       if (searchPre) params.set("search", searchPre);
       const res = await fetch(`${API_URL}/api/pre-matriculas?${params}`);
       if (!res.ok) return [];
@@ -115,7 +116,7 @@ export default function NovaMatriculaPage() {
         `${API_URL}/api/pre-matriculas/${selectedPreId}/converter`,
         {
           method: "POST",
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(payload),
@@ -138,12 +139,29 @@ export default function NovaMatriculaPage() {
           console.error("❌ Response text:", responseText);
         }
         console.error("❌ Erro na resposta:", errorData);
-        throw new Error(
-          errorData.message || 
-          errorData.error || 
-          responseText || 
-          `Erro ${response.status}: Falha ao criar matrícula`
-        );
+
+        // Mapear erros específicos para mensagens mais claras
+        let errorMessage =
+          errorData.message ||
+          errorData.error ||
+          responseText ||
+          `Erro ${response.status}: Falha ao criar matrícula`;
+
+        if (errorMessage.includes("não possui vagas")) {
+          errorMessage =
+            "A turma selecionada não possui vagas disponíveis. Tente outra turma.";
+        } else if (errorMessage.includes("não está ativa")) {
+          errorMessage =
+            "A turma selecionada não está ativa. Tente outra turma.";
+        } else if (errorMessage.includes("não é compatível")) {
+          errorMessage =
+            "A turma selecionada não é compatível com a etapa do aluno.";
+        } else if (errorMessage.includes("Nenhuma turma disponível")) {
+          errorMessage =
+            "Não há turmas disponíveis para esta etapa. Entre em contato com a administração.";
+        }
+
+        throw new Error(errorMessage);
       }
 
       // Parsear o JSON de sucesso
@@ -154,7 +172,7 @@ export default function NovaMatriculaPage() {
         console.error("❌ Erro ao parsear JSON de sucesso:", e);
         throw new Error("Resposta do servidor não é um JSON válido");
       }
-      
+
       console.log("✅ Matrícula criada:", result);
       return result;
     },

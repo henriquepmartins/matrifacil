@@ -4,6 +4,12 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
 // Carregar o .env ANTES de tudo
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 dotenv.config({
   path: resolve(__dirname, "../../apps/web/.env"),
 });

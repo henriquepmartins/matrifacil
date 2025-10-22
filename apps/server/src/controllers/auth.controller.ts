@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from "express";
+import type { Request, Response, NextFunction } from "@types/express";
 import { z } from "zod";
 import { authService } from "../services/auth.service.js";
 import { AppError } from "../middlewares/error.middleware.js";

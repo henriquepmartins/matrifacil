@@ -272,7 +272,7 @@ export class DrizzleMatriculaRepository implements MatriculaRepository {
       })
       .where(eq(aluno.id, matriculaEntity.aluno.id));
 
-    // Retornar a matrícula atualizada
+    // Retornar a matrícula atualizada com dados reais da turma
     return this.findById(matriculaEntity.id) as Promise<Matricula>;
   }
 

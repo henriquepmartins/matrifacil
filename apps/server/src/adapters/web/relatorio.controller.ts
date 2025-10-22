@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "@types/express";
 import { GerarRelatorioUseCase } from "../../application/use-cases/gerar-relatorio.use-case.js";
 import { ListarRelatoriosGeradosUseCase } from "../../application/use-cases/listar-relatorios-gerados.use-case.js";
 import {

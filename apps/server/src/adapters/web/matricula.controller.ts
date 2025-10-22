@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "@types/express";
 import { CreatePreMatriculaUseCase } from "../../application/use-cases/create-pre-matricula.use-case";
 import { ConvertToMatriculaCompletaUseCase } from "../../application/use-cases/convert-to-matricula-completa.use-case";
 import { GetMatriculasUseCase } from "../../application/use-cases/get-matriculas.use-case";
@@ -75,8 +75,9 @@ export class MatriculaController {
       });
     } catch (error) {
       console.error("❌ Erro ao converter pré-matrícula:", error);
-      
-      const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+
+      const errorMessage =
+        error instanceof Error ? error.message : "Erro desconhecido";
       let statusCode = 500;
 
       // Determinar código de status apropriado
@@ -125,9 +126,11 @@ export class MatriculaController {
   async approveMatricula(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
+      const { turmaId } = req.body;
 
       const result = await this.approveMatriculaUseCase.execute({
         matriculaId: id,
+        turmaId,
       });
 
       res.json({
@@ -136,10 +139,31 @@ export class MatriculaController {
         message: "Matrícula aprovada com sucesso",
       });
     } catch (error) {
-      res.status(500).json({
+      console.error("❌ Erro ao aprovar matrícula:", error);
+
+      const errorMessage =
+        error instanceof Error ? error.message : "Erro desconhecido";
+      let statusCode = 500;
+
+      // Determinar código de status apropriado
+      if (errorMessage.includes("não encontrada")) {
+        statusCode = 404;
+      } else if (errorMessage.includes("já está aprovada")) {
+        statusCode = 400;
+      } else if (errorMessage.includes("Nenhuma turma disponível")) {
+        statusCode = 400;
+      } else if (errorMessage.includes("não possui vagas")) {
+        statusCode = 400;
+      } else if (errorMessage.includes("não está ativa")) {
+        statusCode = 400;
+      } else if (errorMessage.includes("não é compatível")) {
+        statusCode = 400;
+      }
+
+      res.status(statusCode).json({
         success: false,
-        message: "Erro ao aprovar matrícula",
-        error: error instanceof Error ? error.message : "Erro desconhecido",
+        message: errorMessage,
+        error: errorMessage,
       });
     }
   }
