@@ -1,6 +1,7 @@
 import { db } from "./db";
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://server-production-3365.up.railway.app";
+export const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 interface RequestConfig extends RequestInit {
   headers?: Record<string, string>;
@@ -19,7 +20,7 @@ class APIClient {
   private async getAuthToken(): Promise<string | null> {
     try {
       const session = await db.sessions.toCollection().first();
-      
+
       if (!session || !session.token) {
         return null;
       }
@@ -85,7 +86,7 @@ class APIClient {
             console.error("Erro ao limpar cache:", clearError);
           }
         }
-        
+
         throw new APIError(
           data.message || `HTTP ${response.status}`,
           response.status,

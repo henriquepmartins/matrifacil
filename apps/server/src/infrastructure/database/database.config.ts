@@ -2,6 +2,6 @@ import {
   db,
   checkDatabaseConnection,
   initializeDatabase,
-} from "../../db/index.js";
+} from "../../config/database.config.js";
 
 export { db, checkDatabaseConnection, initializeDatabase };

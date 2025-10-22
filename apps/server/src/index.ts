@@ -14,7 +14,7 @@ async function startServer() {
     app.listen(port, () => {
       console.log(`\n✅ Servidor rodando com sucesso!`);
       console.log(`📍 URL: http://localhost:${port}`);
-      console.log(`🏥 Health check: http://localhost:${port}/health`);
+      console.log(`📄 Documentação: http://localhost:${port}/docs`);
       console.log(`🌍 Ambiente: ${env.NODE_ENV}`);
       console.log(`\nPressione CTRL+C para parar o servidor\n`);
     });

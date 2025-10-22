@@ -4,8 +4,10 @@ import { Pool } from "pg";
 if (!process.env.DATABASE_URL) {
   throw new Error(
     "❌ DATABASE_URL is not defined!\n\n" +
-      "Please create the file 'apps/web/.env' with your Supabase connection string.\n" +
-      "See ENV_SETUP.md for instructions."
+      "Please configure the DATABASE_URL environment variable in your deployment platform.\n" +
+      "For Railway: Add DATABASE_URL in the Variables section of your project.\n" +
+      "For local development: Create apps/server/.env with DATABASE_URL.\n" +
+      "See RAILWAY_SETUP.md for instructions."
   );
 }
 
@@ -14,6 +16,7 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false,
+    require: true,
   },
   // Configurações de timeout e retry
   connectionTimeoutMillis: 60000,
@@ -24,6 +27,9 @@ const pool = new Pool({
   // Configurações de retry (removidas por incompatibilidade com PoolConfig)
   // Configurações adicionais para estabilidade
   keepAlive: true,
+  keepAliveInitialDelayMillis: 0,
+  // Configurações específicas para Railway
+  family: 4,
 });
 
 export const db = drizzle(pool);

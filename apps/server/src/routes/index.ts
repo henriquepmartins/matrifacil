@@ -4,8 +4,12 @@ import authRoutes from "./auth.routes.js";
 import dashboardRoutes from "./dashboard.routes.js";
 import relatorioRoutes from "./relatorio.routes.js";
 import testRoutes from "./test.routes.js";
+import docsRoutes from "./docs.routes.js";
 
 const router = Router();
+
+// API Documentation
+router.use("/docs", docsRoutes);
 
 // Health check routes
 router.use("/health", healthRoutes);

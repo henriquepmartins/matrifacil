@@ -87,6 +87,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
       });
 
+      // Verifica se a resposta é de sucesso
+      if (!(response as any).success) {
+        throw new Error((response as any).message || "Erro no login");
+      }
+
       console.log("✅ Login bem-sucedido:", (response as any).data.user.email);
 
       // Salva no IndexedDB
@@ -130,6 +135,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email,
         password,
       });
+
+      // Verifica se a resposta é de sucesso
+      if (!(response as any).success) {
+        throw new Error((response as any).message || "Erro no registro");
+      }
 
       console.log(
         "✅ Registro bem-sucedido:",
@@ -188,6 +198,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log("🔄 Atualizando sessão...");
       const response = await apiClient.get("/api/auth/session");
+
+      // Verifica se a resposta é de sucesso
+      if (!(response as any).success) {
+        throw new Error(
+          (response as any).message || "Erro ao atualizar sessão"
+        );
+      }
 
       const userData = {
         ...(response as any).data.user,
