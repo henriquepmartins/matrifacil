@@ -66,29 +66,39 @@ export class TurmaVagasService {
     turmaId: string,
     etapaAluno: string
   ): Promise<import("../../domain/entities/matricula.entity").Turma> {
+    console.log("🔍 Validando turma:", { turmaId, etapaAluno });
+    
     // Verificar se turma existe
     const turma = await this.turmaRepository.findById(turmaId);
+    console.log("🔍 Turma encontrada:", turma ? { id: turma.id, nome: turma.nome, etapa: turma.etapa, ativa: turma.ativa, vagas: turma.vagasDisponiveis } : null);
+    
     if (!turma) {
+      console.log("❌ Turma não encontrada:", turmaId);
       throw new TurmaNaoEncontradaError(turmaId);
     }
 
     // Verificar se turma está ativa
     if (!turma.ativa) {
+      console.log("❌ Turma inativa:", turmaId);
       throw new TurmaInativaError(turmaId);
     }
 
     // Verificar se etapa é compatível
     if (turma.etapa !== etapaAluno) {
+      console.log("❌ Etapa incompatível:", { turmaId, etapaTurma: turma.etapa, etapaAluno });
       throw new EtapaIncompativelError(turmaId, turma.etapa, etapaAluno);
     }
 
     // Verificar se tem vagas disponíveis
     if (turma.vagasDisponiveis <= 0) {
+      console.log("❌ Sem vagas disponíveis:", { turmaId, vagas: turma.vagasDisponiveis });
       throw new TurmaSemVagasError(turmaId);
     }
 
+    console.log("✅ Turma validada, decrementando vaga...");
     // Decrementar vaga
     await this.turmaRepository.decrementarVaga(turmaId);
+    console.log("✅ Vaga decrementada com sucesso");
 
     // Retornar a turma validada
     return turma;
