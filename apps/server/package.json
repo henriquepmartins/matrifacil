@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "build": "tsdown --config tsdown.config.js",
+    "build": "esbuild src/index.ts --bundle --format=esm --outfile=dist/index.js --platform=node --target=node18 --external:pg --external:drizzle-orm --external:dotenv --external:zod --external:bcrypt --external:cookie-parser --external:cors --external:express --external:jsonwebtoken --external:pdfkit --external:uuid --external:@scalar/api-reference --external:@scalar/express-api-reference --external:csv-stringify",
     "dev": "tsx watch src/index.ts",
     "start": "node api/index.js"
   },
@@ -31,7 +31,7 @@
     "@types/node": "^22.13.11",
     "@types/pg": "^8.11.11",
     "@types/pdfkit": "^0.17.3",
-    "tsdown": "0.15.5",
+    "esbuild": "^0.19.0",
     "tsx": "^4.7.0",
     "typescript": "^5"
   }

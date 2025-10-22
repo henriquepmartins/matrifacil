@@ -1,5 +1,4 @@
 import { pgTable, text, jsonb, timestamp, foreignKey, unique, boolean, integer, pgEnum } from "drizzle-orm/pg-core"
-import { sql } from "drizzle-orm"
 
 export const etapa = pgEnum("etapa", ['bercario', 'maternal', 'pre_escola', 'fundamental'])
 export const formatoRelatorio = pgEnum("formato_relatorio", ['pdf', 'csv'])
