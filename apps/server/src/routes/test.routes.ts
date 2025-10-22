@@ -209,14 +209,15 @@ router.post("/create-turmas", async (req, res) => {
     console.log("🏫 Criando turmas de exemplo...");
 
     const turmas = [
+      // Berçário (0 a 1 ano)
       {
         id: uuidv4(),
         idGlobal: uuidv4(),
         nome: "Berçário A - Manhã",
         etapa: "bercario",
         turno: "manha",
-        capacidade: 15,
-        vagasDisponiveis: 15,
+        capacidade: 12,
+        vagasDisponiveis: 12,
         anoLetivo: "2025",
         ativa: true,
       },
@@ -226,6 +227,29 @@ router.post("/create-turmas", async (req, res) => {
         nome: "Berçário B - Tarde",
         etapa: "bercario",
         turno: "tarde",
+        capacidade: 12,
+        vagasDisponiveis: 12,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "Berçário - Integral",
+        etapa: "bercario",
+        turno: "integral",
+        capacidade: 10,
+        vagasDisponiveis: 10,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+      // Maternal I (1 a 2 anos)
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "Maternal I A - Manhã",
+        etapa: "maternal",
+        turno: "manha",
         capacidade: 15,
         vagasDisponiveis: 15,
         anoLetivo: "2025",
@@ -234,8 +258,65 @@ router.post("/create-turmas", async (req, res) => {
       {
         id: uuidv4(),
         idGlobal: uuidv4(),
-        nome: "Maternal A - Manhã",
+        nome: "Maternal I B - Tarde",
         etapa: "maternal",
+        turno: "tarde",
+        capacidade: 15,
+        vagasDisponiveis: 15,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "Maternal I - Integral",
+        etapa: "maternal",
+        turno: "integral",
+        capacidade: 12,
+        vagasDisponiveis: 12,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+      // Maternal II (2 a 3 anos)
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "Maternal II A - Manhã",
+        etapa: "maternal",
+        turno: "manha",
+        capacidade: 18,
+        vagasDisponiveis: 18,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "Maternal II B - Tarde",
+        etapa: "maternal",
+        turno: "tarde",
+        capacidade: 18,
+        vagasDisponiveis: 18,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "Maternal II - Integral",
+        etapa: "maternal",
+        turno: "integral",
+        capacidade: 15,
+        vagasDisponiveis: 15,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+      // Pré I (ou Jardim I - 3 a 4 anos)
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "Pré I (Jardim I) A - Manhã",
+        etapa: "pre_escola",
         turno: "manha",
         capacidade: 20,
         vagasDisponiveis: 20,
@@ -245,8 +326,8 @@ router.post("/create-turmas", async (req, res) => {
       {
         id: uuidv4(),
         idGlobal: uuidv4(),
-        nome: "Maternal B - Tarde",
-        etapa: "maternal",
+        nome: "Pré I (Jardim I) B - Tarde",
+        etapa: "pre_escola",
         turno: "tarde",
         capacidade: 20,
         vagasDisponiveis: 20,
@@ -256,8 +337,54 @@ router.post("/create-turmas", async (req, res) => {
       {
         id: uuidv4(),
         idGlobal: uuidv4(),
-        nome: "Pré-Escola A - Manhã",
+        nome: "Pré I (Jardim I) - Integral",
         etapa: "pre_escola",
+        turno: "integral",
+        capacidade: 18,
+        vagasDisponiveis: 18,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+      // Pré II (ou Jardim II - 4 a 5 anos)
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "Pré II (Jardim II) A - Manhã",
+        etapa: "pre_escola",
+        turno: "manha",
+        capacidade: 22,
+        vagasDisponiveis: 22,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "Pré II (Jardim II) B - Tarde",
+        etapa: "pre_escola",
+        turno: "tarde",
+        capacidade: 22,
+        vagasDisponiveis: 22,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "Pré II (Jardim II) - Integral",
+        etapa: "pre_escola",
+        turno: "integral",
+        capacidade: 20,
+        vagasDisponiveis: 20,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+      // Fundamental (opcional - para transição)
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "1º Ano - Manhã",
+        etapa: "fundamental",
         turno: "manha",
         capacidade: 25,
         vagasDisponiveis: 25,
@@ -267,8 +394,8 @@ router.post("/create-turmas", async (req, res) => {
       {
         id: uuidv4(),
         idGlobal: uuidv4(),
-        nome: "Pré-Escola B - Tarde",
-        etapa: "pre_escola",
+        nome: "1º Ano - Tarde",
+        etapa: "fundamental",
         turno: "tarde",
         capacidade: 25,
         vagasDisponiveis: 25,
@@ -282,9 +409,223 @@ router.post("/create-turmas", async (req, res) => {
     }
 
     console.log("✅ Turmas criadas com sucesso!");
-    res.json({ success: true, message: "Turmas criadas com sucesso", turmas });
+    res.json({ 
+      success: true, 
+      message: `${turmas.length} turmas criadas com sucesso`, 
+      turmas 
+    });
   } catch (error) {
     console.error("❌ Erro ao criar turmas:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Rota rápida para adicionar turmas de Fundamental
+router.post("/add-fundamental-turmas", async (req, res) => {
+  try {
+    console.log("🏫 Adicionando turmas de Fundamental...");
+
+    const turmasFundamental = [
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "1º Ano - Manhã",
+        etapa: "fundamental",
+        turno: "manha",
+        capacidade: 25,
+        vagasDisponiveis: 25,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "1º Ano - Tarde",
+        etapa: "fundamental",
+        turno: "tarde",
+        capacidade: 25,
+        vagasDisponiveis: 25,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "1º Ano - Integral",
+        etapa: "fundamental",
+        turno: "integral",
+        capacidade: 20,
+        vagasDisponiveis: 20,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+    ];
+
+    for (const turmaData of turmasFundamental) {
+      try {
+        await db.insert(turma).values(turmaData);
+        console.log(`✅ Turma criada: ${turmaData.nome}`);
+      } catch (err) {
+        console.log(`⚠️ Turma já existe ou erro: ${turmaData.nome}`);
+      }
+    }
+
+    console.log("✅ Turmas de Fundamental processadas!");
+    res.json({ 
+      success: true, 
+      message: `Turmas de Fundamental processadas com sucesso`, 
+      turmas: turmasFundamental 
+    });
+  } catch (error) {
+    console.error("❌ Erro ao criar turmas de Fundamental:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/add-more-turmas", async (req, res) => {
+  try {
+    console.log("🏫 Adicionando turmas adicionais...");
+
+    const turmasAdicionais = [
+      // Berçário Integral
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "Berçário - Integral",
+        etapa: "bercario",
+        turno: "integral",
+        capacidade: 10,
+        vagasDisponiveis: 10,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+      // Maternal I e II
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "Maternal I - Integral",
+        etapa: "maternal",
+        turno: "integral",
+        capacidade: 12,
+        vagasDisponiveis: 12,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "Maternal II A - Manhã",
+        etapa: "maternal",
+        turno: "manha",
+        capacidade: 18,
+        vagasDisponiveis: 18,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "Maternal II B - Tarde",
+        etapa: "maternal",
+        turno: "tarde",
+        capacidade: 18,
+        vagasDisponiveis: 18,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "Maternal II - Integral",
+        etapa: "maternal",
+        turno: "integral",
+        capacidade: 15,
+        vagasDisponiveis: 15,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+      // Pré I e Pré II
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "Pré I (Jardim I) - Integral",
+        etapa: "pre_escola",
+        turno: "integral",
+        capacidade: 18,
+        vagasDisponiveis: 18,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "Pré II (Jardim II) A - Manhã",
+        etapa: "pre_escola",
+        turno: "manha",
+        capacidade: 22,
+        vagasDisponiveis: 22,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "Pré II (Jardim II) B - Tarde",
+        etapa: "pre_escola",
+        turno: "tarde",
+        capacidade: 22,
+        vagasDisponiveis: 22,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "Pré II (Jardim II) - Integral",
+        etapa: "pre_escola",
+        turno: "integral",
+        capacidade: 20,
+        vagasDisponiveis: 20,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+      // Fundamental
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "1º Ano - Manhã",
+        etapa: "fundamental",
+        turno: "manha",
+        capacidade: 25,
+        vagasDisponiveis: 25,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+      {
+        id: uuidv4(),
+        idGlobal: uuidv4(),
+        nome: "1º Ano - Tarde",
+        etapa: "fundamental",
+        turno: "tarde",
+        capacidade: 25,
+        vagasDisponiveis: 25,
+        anoLetivo: "2025",
+        ativa: true,
+      },
+    ];
+
+    for (const turmaData of turmasAdicionais) {
+      await db.insert(turma).values(turmaData);
+    }
+
+    console.log("✅ Turmas adicionais criadas com sucesso!");
+    res.json({ 
+      success: true, 
+      message: `${turmasAdicionais.length} turmas adicionais criadas com sucesso`, 
+      turmas: turmasAdicionais 
+    });
+  } catch (error) {
+    console.error("❌ Erro ao criar turmas adicionais:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

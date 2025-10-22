@@ -120,23 +120,32 @@ export default function MatriculasPage() {
   const [filtroStatus, setFiltroStatus] = useState<string>("todos");
   const [filtroTurma, setFiltroTurma] = useState<string>("todos");
 
-  const { data: matriculas, isLoading } = useQuery({
+  const { data: matriculas, isLoading, error } = useQuery({
     queryKey: ["matriculas", filtroStatus, filtroTurma],
     queryFn: async (): Promise<MatriculaRow[]> => {
+      console.log("🔍 Buscando matrículas...", { filtroStatus, filtroTurma });
       const params = new URLSearchParams();
       if (filtroStatus !== "todos") params.set("status", filtroStatus);
       if (filtroTurma !== "todos") params.set("etapa", filtroTurma);
       const response = await fetch(
-        `${API_URL}/api/matriculas?${params.toString()}`
+        `${API_URL}/api/matriculas?${params.toString()}`,
+        {
+          credentials: "include",
+        }
       );
-      if (!response.ok) return [];
+      if (!response.ok) {
+        console.error("❌ Erro ao buscar matrículas:", response.status);
+        return [];
+      }
       const result = await response.json();
+      console.log("📦 Resposta da API:", result);
       const data = (result?.data || []) as Array<any>;
+      console.log(`✅ ${data.length} matrículas carregadas`);
       return data.map((item) => ({
         id: item.id,
         protocolo: item.protocoloLocal,
-        aluno: item.aluno?.nome,
-        responsavel: item.responsavel?.nome,
+        aluno: item.aluno?.nome || "Sem nome",
+        responsavel: item.responsavel?.nome || "Sem nome",
         turma: item.turma ? `${item.turma.nome} - ${item.turma.turno}` : null,
         status: item.status,
         data: new Date(item.createdAt).toLocaleDateString("pt-BR"),
@@ -147,6 +156,12 @@ export default function MatriculasPage() {
         turmaData: item.turma,
       }));
     },
+  });
+
+  console.log("📊 Estado das matrículas:", {
+    total: matriculas?.length,
+    isLoading,
+    error,
   });
 
   return (
@@ -220,13 +235,39 @@ export default function MatriculasPage() {
           <CardTitle>Lista de Matrículas</CardTitle>
         </CardHeader>
         <CardContent>
-          <DataTable
-            data={matriculas || []}
-            columns={columns}
-            searchKey="aluno"
-            searchPlaceholder="Buscar por aluno..."
-            pageSize={10}
-          />
+          {isLoading ? (
+            <div className="flex items-center justify-center p-8 text-muted-foreground">
+              <div className="text-center">
+                <p>Carregando matrículas...</p>
+              </div>
+            </div>
+          ) : error ? (
+            <div className="flex items-center justify-center p-8 text-red-500">
+              <div className="text-center">
+                <p>Erro ao carregar matrículas</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {error instanceof Error ? error.message : "Erro desconhecido"}
+                </p>
+              </div>
+            </div>
+          ) : matriculas && matriculas.length === 0 ? (
+            <div className="flex items-center justify-center p-8 text-muted-foreground">
+              <div className="text-center">
+                <p>Nenhuma matrícula encontrada</p>
+                <p className="text-sm mt-2">
+                  Crie uma nova matrícula usando o botão acima
+                </p>
+              </div>
+            </div>
+          ) : (
+            <DataTable
+              data={matriculas || []}
+              columns={columns}
+              searchKey="aluno"
+              searchPlaceholder="Buscar por aluno..."
+              pageSize={10}
+            />
+          )}
         </CardContent>
       </Card>
     </div>

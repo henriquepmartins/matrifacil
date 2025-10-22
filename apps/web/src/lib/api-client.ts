@@ -19,7 +19,19 @@ class APIClient {
   private async getAuthToken(): Promise<string | null> {
     try {
       const session = await db.sessions.toCollection().first();
-      return session?.token || null;
+      
+      if (!session || !session.token) {
+        return null;
+      }
+
+      // Verifica se a sessão expirou
+      if (session.expiresAt && session.expiresAt < new Date()) {
+        await db.sessions.delete(session.id);
+        await db.users.clear();
+        return null;
+      }
+
+      return session.token;
     } catch (error) {
       console.error("Erro ao obter token:", error);
       return null;
@@ -43,7 +55,7 @@ class APIClient {
 
     // Adiciona token de autenticação se disponível
     const token = await this.getAuthToken();
-    if (token) {
+    if (token && token.trim() !== "") {
       headers["Authorization"] = `Bearer ${token}`;
     }
 
@@ -64,6 +76,16 @@ class APIClient {
       }
 
       if (!response.ok) {
+        // Se for erro de autenticação, limpa o cache
+        if (response.status === 401) {
+          try {
+            await db.sessions.clear();
+            await db.users.clear();
+          } catch (clearError) {
+            console.error("Erro ao limpar cache:", clearError);
+          }
+        }
+        
         throw new APIError(
           data.message || `HTTP ${response.status}`,
           response.status,

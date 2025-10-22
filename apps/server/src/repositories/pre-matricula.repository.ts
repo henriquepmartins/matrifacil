@@ -239,7 +239,7 @@ export class PreMatriculaRepository {
     return this.findById(id) as Promise<PreMatriculaWithDetails>;
   }
 
-  async approveMatricula(id: string): Promise<PreMatriculaWithDetails | null> {
+  async approveMatricula(id: string, turmaId?: string): Promise<PreMatriculaWithDetails | null> {
     const existing = await this.findById(id);
     if (!existing) {
       return null;
@@ -249,15 +249,18 @@ export class PreMatriculaRepository {
       throw new Error("Matrícula já está aprovada");
     }
 
+    // Atualiza a matrícula com o status completo e a turma (se fornecida)
     await db
       .update(matricula)
       .set({
         status: "completo",
         dataMatricula: new Date(),
+        ...(turmaId ? { turmaId } : {}),
         // Remover updatedAt - ele tem defaultNow()
       })
       .where(eq(matricula.id, id));
 
+    // Atualiza o status do aluno
     await db
       .update(aluno)
       .set({

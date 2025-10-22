@@ -7,6 +7,9 @@ import type {
   MatriculaFilters,
 } from "../repositories/pre-matricula.repository.js";
 import { AppError } from "../middlewares/error.middleware.js";
+import { db } from "../config/database.config.js";
+import { turma } from "@matrifacil-/db/schema/matriculas.js";
+import { eq } from "drizzle-orm";
 
 export class PreMatriculaService {
   private validateCPF(cpf: string): boolean {
@@ -374,12 +377,43 @@ export class PreMatriculaService {
     }
   }
 
-  async approveMatricula(id: string): Promise<any> {
+  async approveMatricula(id: string, turmaId?: string): Promise<any> {
     if (!id) {
       throw new AppError(400, "ID da matrícula é obrigatório");
     }
 
-    const result = await preMatriculaRepository.approveMatricula(id);
+    if (turmaId) {
+      // Verifica se a turma existe e está ativa
+      const turmaResult = await db
+        .select()
+        .from(turma)
+        .where(eq(turma.id, turmaId))
+        .limit(1);
+
+      const turmaData = turmaResult[0];
+
+      if (!turmaData) {
+        throw new AppError(404, "Turma não encontrada");
+      }
+
+      if (!turmaData.ativa) {
+        throw new AppError(400, "Turma não está ativa");
+      }
+
+      if (turmaData.vagasDisponiveis <= 0) {
+        throw new AppError(400, "Turma sem vagas disponíveis");
+      }
+
+      // Atualiza vagas da turma
+      await db
+        .update(turma)
+        .set({
+          vagasDisponiveis: turmaData.vagasDisponiveis - 1,
+        })
+        .where(eq(turma.id, turmaId));
+    }
+
+    const result = await preMatriculaRepository.approveMatricula(id, turmaId);
     if (!result) {
       throw new AppError(404, "Matrícula não encontrada");
     }

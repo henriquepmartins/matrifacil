@@ -5,6 +5,7 @@ import { DashboardController } from "../adapters/web/dashboard.controller.js";
 import {
   buscarAlunos,
   deleteMatricula,
+  getTurmas,
 } from "../controllers/dashboard.controller.js";
 
 const router = Router();
@@ -46,5 +47,8 @@ router.delete("/api/matriculas/:id", deleteMatricula);
 
 // Rota para buscar alunos (autocomplete)
 router.get("/api/matriculas/buscar-alunos", buscarAlunos);
+
+// Rota para buscar turmas
+router.get("/api/turmas", getTurmas);
 
 export default router;

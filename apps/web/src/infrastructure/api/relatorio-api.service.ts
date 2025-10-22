@@ -43,22 +43,57 @@ export interface ListarRelatoriosResponse {
   offset: number;
 }
 
+export interface ListarRelatoriosApiResponse {
+  success: boolean;
+  data: ListarRelatoriosResponse;
+}
+
 // Function to get auth token (similar to sync.ts implementation)
 async function getAuthToken(): Promise<string | null> {
-  const session = await db.sessions.toCollection().first();
-  return session?.token || null;
+  try {
+    const session = await db.sessions.toCollection().first();
+    
+    if (!session || !session.token) {
+      return null;
+    }
+
+    // Verifica se a sessão expirou
+    if (session.expiresAt && session.expiresAt < new Date()) {
+      await db.sessions.delete(session.id);
+      await db.users.clear();
+      return null;
+    }
+
+    return session.token;
+  } catch (error) {
+    console.error("Erro ao obter token:", error);
+    return null;
+  }
 }
 
 export class RelatorioApiService {
   static async gerarRelatorio(request: GerarRelatorioRequest): Promise<Blob> {
     try {
+      // Verifica se existe uma sessão válida antes de fazer a requisição
+      const session = await db.sessions.toCollection().first();
+      
+      if (!session || !session.token) {
+        throw new Error("Sessão não encontrada. Faça login novamente.");
+      }
+
+      if (session.expiresAt && session.expiresAt < new Date()) {
+        await db.sessions.clear();
+        await db.users.clear();
+        throw new Error("Sessão expirada. Faça login novamente.");
+      }
+
       // Build URL and headers
       const url = `${API_URL}/api/relatorios/gerar`;
-      const token = await getAuthToken();
+      const token = session.token;
       
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
-        ...token ? { "Authorization": `Bearer ${token}` } : {},
+        "Authorization": `Bearer ${token}`,
       };
 
       const response = await fetch(url, {
@@ -70,14 +105,22 @@ export class RelatorioApiService {
 
       if (!response.ok) {
         const errorText = await response.text();
+        
+        // Se for erro de autenticação, limpa o cache
+        if (response.status === 401) {
+          await db.sessions.clear();
+          await db.users.clear();
+          throw new Error("Sessão inválida. Por favor, faça login novamente.");
+        }
+        
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
       // Return the response as blob
       return await response.blob();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao gerar relatório:", error);
-      throw new Error("Falha ao gerar relatório");
+      throw new Error(error?.message || "Falha ao gerar relatório");
     }
   }
 
@@ -86,14 +129,35 @@ export class RelatorioApiService {
     offset: number = 0
   ): Promise<ListarRelatoriosResponse> {
     try {
-      const response = await apiClient.get<ListarRelatoriosResponse>(
+      // Verifica se existe uma sessão válida antes de fazer a requisição
+      const session = await db.sessions.toCollection().first();
+      
+      if (!session || !session.token) {
+        throw new Error("Sessão não encontrada. Faça login novamente.");
+      }
+
+      if (session.expiresAt && session.expiresAt < new Date()) {
+        await db.sessions.clear();
+        await db.users.clear();
+        throw new Error("Sessão expirada. Faça login novamente.");
+      }
+
+      const response = await apiClient.get<ListarRelatoriosApiResponse>(
         `/api/relatorios/historico?limit=${limit}&offset=${offset}`
       );
 
-      return response;
-    } catch (error) {
+      return response.data;
+    } catch (error: any) {
       console.error("Erro ao listar relatórios:", error);
-      throw new Error("Falha ao listar relatórios");
+      
+      // Se for erro de autenticação, redireciona para login
+      if (error?.statusCode === 401 || error?.message?.includes("Token")) {
+        await db.sessions.clear();
+        await db.users.clear();
+        throw new Error("Sessão inválida. Por favor, faça login novamente.");
+      }
+      
+      throw new Error(error?.message || "Falha ao listar relatórios");
     }
   }
 

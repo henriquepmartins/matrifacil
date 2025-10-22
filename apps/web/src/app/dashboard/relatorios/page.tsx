@@ -48,7 +48,21 @@ export default function RelatoriosPage() {
     relatorios,
     totalRelatorios,
     isLoadingRelatorios,
+    errorRelatorios,
   } = useRelatorios();
+
+  // Debug logs
+  console.log("📊 Relatórios no componente:", {
+    relatorios,
+    isArray: Array.isArray(relatorios),
+    length: relatorios?.length,
+    totalRelatorios,
+    isLoadingRelatorios,
+    errorRelatorios,
+  });
+
+  // Garante que relatorios é sempre um array
+  const relatoriosList = Array.isArray(relatorios) ? relatorios : [];
 
   const handleGerarRelatorio = () => {
     try {
@@ -416,25 +430,33 @@ export default function RelatoriosPage() {
           </CardHeader>
           <CardContent>
             {isLoadingRelatorios ? (
-              <div className="flex items-center justify-center p-8">
+              <div className="flex items-center justify-center p-8 text-muted-foreground">
                 <Loader2 className="h-6 w-6 animate-spin" />
                 <span className="ml-2">Carregando relatórios...</span>
               </div>
-            ) : relatorios.length === 0 ? (
-              <div className="text-center p-8 text-muted-foreground">
-                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Nenhum relatório gerado ainda.</p>
-                <p className="text-sm">
-                  Gere seu primeiro relatório usando o formulário acima.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {relatorios.map((relatorio) => (
-                  <div
-                    key={relatorio.id}
-                    className="flex items-center justify-between p-4 border rounded-lg"
-                  >
+            ) : errorRelatorios ? (
+                <div className="text-center p-8 text-red-500">
+                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Erro ao carregar relatórios</p>
+                  <p className="text-sm text-muted-foreground">
+                    {errorRelatorios instanceof Error ? errorRelatorios.message : "Erro desconhecido"}
+                  </p>
+                </div>
+              ) : relatoriosList.length === 0 ? (
+                <div className="text-center p-8 text-muted-foreground">
+                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Nenhum relatório gerado ainda.</p>
+                  <p className="text-sm">
+                    Gere seu primeiro relatório usando o formulário acima.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {relatoriosList.map((relatorio) => (
+                    <div
+                      key={relatorio.id}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
                     <div className="flex items-center gap-3">
                       <FileText
                         className={`h-5 w-5 ${
@@ -464,11 +486,11 @@ export default function RelatoriosPage() {
                         <Download className="h-4 w-4 mr-1" />
                         {relatorio.formato.toUpperCase()}
                       </Button>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
           </CardContent>
         </Card>
       </div>

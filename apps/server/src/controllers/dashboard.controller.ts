@@ -1,6 +1,8 @@
 import type { Request, Response } from "express";
 import { preMatriculaService } from "../services/pre-matricula.service.js";
 import { AppError } from "../middlewares/error.middleware.js";
+import { db } from "../config/database.config.js";
+import { sql } from "drizzle-orm";
 
 const mockStats = {
   totalMatriculas: 156,
@@ -390,36 +392,66 @@ export const updateMatriculasWithTurmas = async (
 
 export const getTurmas = async (req: Request, res: Response) => {
   try {
-    const { etapa, turno, search, limit, offset } = req.query;
+    const { etapa, turno, search, limit, offset, ativa } = req.query;
 
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    console.log("🔍 Buscando turmas do banco de dados...", { etapa, turno, search, ativa });
 
-    let filtered = [...mockTurmas];
-
+    // Construir condições de filtro
+    const conditions = [];
+    
     if (etapa && etapa !== "todos") {
-      filtered = filtered.filter((item) => item.etapa === etapa);
+      conditions.push(sql`etapa = ${etapa}`);
     }
 
     if (turno && turno !== "todos") {
-      filtered = filtered.filter((item) => item.turno === turno);
+      conditions.push(sql`turno = ${turno}`);
+    }
+
+    if (ativa !== undefined) {
+      const ativaValue = ativa === "true" || ativa === true || ativa === "1";
+      conditions.push(sql`ativa = ${ativaValue}`);
     }
 
     if (search) {
-      filtered = filtered.filter((item) =>
-        item.nome.toLowerCase().includes(search.toString().toLowerCase())
-      );
+      conditions.push(sql`LOWER(nome) LIKE ${`%${search.toString().toLowerCase()}%`}`);
     }
 
+    // Construir query base
+    let query = sql`
+      SELECT id, id_global as "idGlobal", nome, etapa, turno, capacidade, 
+             vagas_disponiveis as "vagasDisponiveis", ano_letivo as "anoLetivo", 
+             ativa, created_at as "createdAt", updated_at as "updatedAt"
+      FROM turma
+    `;
+
+    // Adicionar condições WHERE se houver
+    if (conditions.length > 0) {
+      query = sql`${query} WHERE ${sql.join(conditions, sql` AND `)}`;
+    }
+
+    // Adicionar ordenação
+    query = sql`${query} ORDER BY nome`;
+
+    // Executar query
+    const result = await db.execute(query);
+    let turmas = result.rows as any[];
+
+    console.log(`✅ ${turmas.length} turmas encontradas`);
+
+    // Aplicar paginação se fornecida
     const start = offset ? parseInt(offset as string) : 0;
-    const end = limit ? start + parseInt(limit as string) : undefined;
-    const paged = filtered.slice(start, end);
+    const limitNum = limit ? parseInt(limit as string) : turmas.length;
+    const paged = turmas.slice(start, start + limitNum);
 
     res.json({
       success: true,
       data: paged,
-      total: filtered.length,
+      total: turmas.length,
+      limit: limitNum,
+      offset: start,
     });
   } catch (error) {
+    console.error("❌ Erro ao buscar turmas:", error);
     res.status(500).json({
       success: false,
       message: "Erro ao buscar turmas",
@@ -494,8 +526,9 @@ export const deleteMatricula = async (req: Request, res: Response) => {
 export const approveMatricula = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const { turmaId } = req.body;
 
-    const result = await preMatriculaService.approveMatricula(id);
+    const result = await preMatriculaService.approveMatricula(id, turmaId);
 
     res.json({
       success: true,

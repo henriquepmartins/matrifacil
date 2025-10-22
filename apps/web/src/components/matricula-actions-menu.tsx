@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -76,6 +76,8 @@ export default function MatriculaActionsMenu({
 }: MatriculaActionsMenuProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
+  const [selectedTurmaId, setSelectedTurmaId] = useState<string>("");
   const queryClient = useQueryClient();
 
   // Estados para edição
@@ -122,13 +124,35 @@ export default function MatriculaActionsMenu({
     },
   });
 
+  // Query para buscar turmas disponíveis baseado na etapa do aluno
+  const { data: turmasDisponiveis, isLoading: isLoadingTurmas } = useQuery({
+    queryKey: ["turmas", "disponiveis", matricula.alunoData?.etapa],
+    queryFn: async () => {
+      const etapa = matricula.alunoData?.etapa;
+      if (!etapa) return [];
+      
+      const response = await fetch(
+        `${API_URL}/api/turmas?etapa=${etapa}&ativa=true`
+      );
+      if (!response.ok) return [];
+      
+      const result = await response.json();
+      return result?.data || [];
+    },
+    enabled: isApproveDialogOpen && !!matricula.alunoData?.etapa,
+  });
+
   // Mutação para aprovar matrícula
   const approveMatricula = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, turmaId }: { id: string; turmaId: string }) => {
       const response = await fetch(
         `${API_URL}/api/matriculas/${id}/approve`,
         {
           method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ turmaId }),
         }
       );
       if (!response.ok) {
@@ -139,6 +163,8 @@ export default function MatriculaActionsMenu({
     onSuccess: () => {
       toast.success("Matrícula aprovada com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["matriculas"] });
+      setIsApproveDialogOpen(false);
+      setSelectedTurmaId("");
     },
     onError: (error) => {
       toast.error("Erro ao aprovar matrícula: " + error.message);
@@ -182,7 +208,11 @@ export default function MatriculaActionsMenu({
   };
 
   const handleApprove = () => {
-    approveMatricula.mutate(matricula.id);
+    if (!selectedTurmaId) {
+      toast.error("Selecione uma turma para aprovar a matrícula");
+      return;
+    }
+    approveMatricula.mutate({ id: matricula.id, turmaId: selectedTurmaId });
   };
 
   return (
@@ -196,7 +226,7 @@ export default function MatriculaActionsMenu({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {matricula.status === "pre" && (
-            <DropdownMenuItem onClick={handleApprove}>
+            <DropdownMenuItem onClick={() => setIsApproveDialogOpen(true)}>
               <CheckCircle className="mr-2 h-4 w-4" />
               Aprovar Matrícula
             </DropdownMenuItem>
@@ -483,6 +513,80 @@ export default function MatriculaActionsMenu({
                 disabled={deleteMatricula.isPending}
               >
                 {deleteMatricula.isPending ? "Deletando..." : "Deletar"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Aprovação com Seleção de Turma */}
+      <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Aprovar Matrícula</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Aluno</Label>
+              <Input value={matricula.aluno} disabled />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Etapa</Label>
+              <Input 
+                value={
+                  matricula.alunoData?.etapa === "bercario" ? "Berçário" :
+                  matricula.alunoData?.etapa === "maternal" ? "Maternal" :
+                  matricula.alunoData?.etapa === "pre_escola" ? "Pré-Escola" :
+                  matricula.alunoData?.etapa === "fundamental" ? "Fundamental" :
+                  matricula.alunoData?.etapa || "Não informada"
+                } 
+                disabled 
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="turma">Turma *</Label>
+              {isLoadingTurmas ? (
+                <div className="text-sm text-muted-foreground">
+                  Carregando turmas disponíveis...
+                </div>
+              ) : !turmasDisponiveis || turmasDisponiveis.length === 0 ? (
+                <div className="text-sm text-red-500">
+                  Nenhuma turma disponível para esta etapa
+                </div>
+              ) : (
+                <Select value={selectedTurmaId} onValueChange={setSelectedTurmaId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a turma" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {turmasDisponiveis.map((turma: any) => (
+                      <SelectItem key={turma.id} value={turma.id}>
+                        {turma.nome} - {turma.turno === "manha" ? "Manhã" : turma.turno === "tarde" ? "Tarde" : "Integral"} 
+                        ({turma.vagasDisponiveis} vagas)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsApproveDialogOpen(false);
+                  setSelectedTurmaId("");
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleApprove}
+                disabled={!selectedTurmaId || approveMatricula.isPending}
+              >
+                {approveMatricula.isPending ? "Aprovando..." : "Aprovar"}
               </Button>
             </div>
           </div>
