@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import ProtectedRoute from "@/components/protected-route";
+import { API_URL } from "@/lib/api-client";
 import {
   Download,
   FileText,
@@ -78,7 +79,7 @@ export default function RelatoriosPage() {
       console.log("🔍 Buscando turmas via API...", { nomeParcial });
 
       const response = await fetch(
-        `http://localhost:3000/api/test/check-turmas`
+        `${API_URL}/api/test/check-turmas`
       );
       const result = await response.json();
 

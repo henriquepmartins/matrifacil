@@ -1,6 +1,6 @@
 import { db } from "./db";
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://server-production-3365.up.railway.app";
 
 interface RequestConfig extends RequestInit {
   headers?: Record<string, string>;

@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { API_URL } from "@/lib/api-client";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -101,7 +102,7 @@ export default function MatriculaActionsMenu({
   const deleteMatricula = useMutation({
     mutationFn: async (id: string) => {
       const response = await fetch(
-        `http://localhost:3000/api/matriculas/${id}`,
+        `${API_URL}/api/matriculas/${id}`,
         {
           method: "DELETE",
         }
@@ -125,7 +126,7 @@ export default function MatriculaActionsMenu({
   const approveMatricula = useMutation({
     mutationFn: async (id: string) => {
       const response = await fetch(
-        `http://localhost:3000/api/matriculas/${id}/approve`,
+        `${API_URL}/api/matriculas/${id}/approve`,
         {
           method: "POST",
         }
@@ -148,7 +149,7 @@ export default function MatriculaActionsMenu({
   const updateMatricula = useMutation({
     mutationFn: async (data: any) => {
       const response = await fetch(
-        `http://localhost:3000/api/matriculas/${matricula.id}`,
+        `${API_URL}/api/matriculas/${matricula.id}`,
         {
           method: "PUT",
           headers: {

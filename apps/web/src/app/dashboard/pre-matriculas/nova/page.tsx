@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { API_URL } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -111,7 +112,7 @@ export default function NovaPreMatriculaPage() {
 
   const createPreMatriculaMutation = useMutation({
     mutationFn: async (data: PreMatriculaFormData) => {
-      const response = await fetch("http://localhost:3000/api/pre-matriculas", {
+      const response = await fetch(`${API_URL}/api/pre-matriculas`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

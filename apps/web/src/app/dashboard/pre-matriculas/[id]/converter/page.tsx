@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
+import { API_URL } from "@/lib/api-client";
 import { toast } from "sonner";
 
 type PreDetalhe = {
@@ -64,7 +65,7 @@ export default function ConverterPreMatriculaPage() {
     queryFn: async (): Promise<PreDetalhe | null> => {
       if (!preId) return null;
       const res = await fetch(
-        `http://localhost:3000/api/pre-matriculas/${preId}`
+        `${API_URL}/api/pre-matriculas/${preId}`
       );
       if (!res.ok) return null;
       const json = await res.json();
@@ -80,7 +81,7 @@ export default function ConverterPreMatriculaPage() {
       if (etapaFiltro !== "todos") params.set("etapa", etapaFiltro);
       if (turnoFiltro !== "todos") params.set("turno", turnoFiltro);
       params.set("limit", "20");
-      const res = await fetch(`http://localhost:3000/api/turmas?${params}`);
+      const res = await fetch(`${API_URL}/api/turmas?${params}`);
       if (!res.ok) return [];
       const json = await res.json();
       return (json.data || []) as TurmaResumo[];
@@ -92,7 +93,7 @@ export default function ConverterPreMatriculaPage() {
     mutationFn: async () => {
       if (!preId) throw new Error("Pré-matrícula inválida");
       const response = await fetch(
-        `http://localhost:3000/api/matriculas/from-pre/${preId}`,
+        `${API_URL}/api/matriculas/from-pre/${preId}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
