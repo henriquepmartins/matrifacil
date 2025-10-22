@@ -81,15 +81,23 @@ const columns = [
           Necessária
         </span>
       ) : (
-        <span className="text-xs text-muted-foreground text-center flex justify-center">
-          —
-        </span>
+        <div className="flex justify-center">
+          <span className="text-xs text-muted-foreground">—</span>
+        </div>
       ),
   },
   {
     key: "turma" as const,
     label: "Turma",
     sortable: true,
+    render: (value: string | null) =>
+      value ? (
+        value
+      ) : (
+        <div className="flex justify-center">
+          <span className="text-xs text-muted-foreground">—</span>
+        </div>
+      ),
   },
   {
     key: "status" as const,
