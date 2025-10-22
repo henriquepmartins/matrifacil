@@ -45,11 +45,28 @@ export class MatriculaController {
       const { id } = req.params;
       const { turmaId, dataMatricula, documentosIniciais } = req.body;
 
+      console.log("🎯 Convertendo pré-matrícula:", {
+        id,
+        turmaId,
+        dataMatricula,
+        documentosIniciais,
+      });
+
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          message: "ID da pré-matrícula é obrigatório",
+        });
+        return;
+      }
+
       const result = await this.convertToMatriculaCompletaUseCase.execute({
         matriculaId: id,
         turmaId,
         dataMatricula: dataMatricula ? new Date(dataMatricula) : undefined,
       });
+
+      console.log("✅ Matrícula convertida com sucesso:", result.matricula.id);
 
       res.json({
         success: true,
@@ -57,10 +74,24 @@ export class MatriculaController {
         message: "Pré-matrícula convertida para matrícula completa com sucesso",
       });
     } catch (error) {
-      res.status(500).json({
+      console.error("❌ Erro ao converter pré-matrícula:", error);
+      
+      const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+      let statusCode = 500;
+
+      // Determinar código de status apropriado
+      if (errorMessage.includes("não encontrada")) {
+        statusCode = 404;
+      } else if (errorMessage.includes("Apenas pré-matrículas")) {
+        statusCode = 400;
+      } else if (errorMessage.includes("Nenhuma turma disponível")) {
+        statusCode = 400;
+      }
+
+      res.status(statusCode).json({
         success: false,
-        message: "Erro ao converter pré-matrícula",
-        error: error instanceof Error ? error.message : "Erro desconhecido",
+        message: errorMessage,
+        error: errorMessage,
       });
     }
   }

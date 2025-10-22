@@ -125,13 +125,36 @@ export default function NovaMatriculaPage() {
 
       console.log("📡 Response status:", response.status);
 
+      // Tentar pegar o texto da resposta primeiro
+      const responseText = await response.text();
+      console.log("📄 Response text:", responseText);
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        let errorData: any = {};
+        try {
+          errorData = responseText ? JSON.parse(responseText) : {};
+        } catch (e) {
+          console.error("❌ Erro ao parsear JSON:", e);
+          console.error("❌ Response text:", responseText);
+        }
         console.error("❌ Erro na resposta:", errorData);
-        throw new Error(errorData.message || `Erro ${response.status}: Falha ao criar matrícula`);
+        throw new Error(
+          errorData.message || 
+          errorData.error || 
+          responseText || 
+          `Erro ${response.status}: Falha ao criar matrícula`
+        );
       }
 
-      const result = await response.json();
+      // Parsear o JSON de sucesso
+      let result: any = {};
+      try {
+        result = responseText ? JSON.parse(responseText) : {};
+      } catch (e) {
+        console.error("❌ Erro ao parsear JSON de sucesso:", e);
+        throw new Error("Resposta do servidor não é um JSON válido");
+      }
+      
       console.log("✅ Matrícula criada:", result);
       return result;
     },
