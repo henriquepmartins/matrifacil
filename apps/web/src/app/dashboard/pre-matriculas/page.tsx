@@ -18,7 +18,7 @@ import PreMatriculaEditDialog from "@/components/pre-matricula-edit-dialog";
 import { Plus, Eye, Edit, FileText, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { API_URL } from "@/lib/api-client";
+import { apiClient } from "@/lib/api-client";
 
 interface PreMatricula {
   id: string;
@@ -73,15 +73,15 @@ export default function PreMatriculasPage() {
     queryKey: ["pre-matriculas"],
     queryFn: async () => {
       console.log("🔍 Buscando pré-matrículas...");
-      const response = await fetch(`${API_URL}/api/pre-matriculas`);
-      console.log("📡 Response status:", response.status);
-      if (!response.ok) {
+      try {
+        const result = await apiClient.get("/api/pre-matriculas");
+        console.log("📊 Resultado da API:", result);
+        console.log("📋 Dados:", result.data);
+        return result.data;
+      } catch (error) {
+        console.error("📡 Erro na requisição:", error);
         throw new Error("Erro ao buscar pré-matrículas");
       }
-      const result = await response.json();
-      console.log("📊 Resultado da API:", result);
-      console.log("📋 Dados:", result.data);
-      return result.data;
     },
   });
 
@@ -102,12 +102,10 @@ export default function PreMatriculasPage() {
 
   const deletePreMatriculaMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await fetch(`${API_URL}/api/pre-matriculas/${id}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Erro ao deletar pré-matrícula");
+      try {
+        await apiClient.delete(`/api/pre-matriculas/${id}`);
+      } catch (error: any) {
+        throw new Error(error?.message || "Erro ao deletar pré-matrícula");
       }
     },
     onSuccess: () => {

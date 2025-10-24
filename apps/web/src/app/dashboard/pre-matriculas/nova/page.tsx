@@ -6,7 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { API_URL } from "@/lib/api-client";
+import { apiClient } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -112,12 +112,8 @@ export default function NovaPreMatriculaPage() {
 
   const createPreMatriculaMutation = useMutation({
     mutationFn: async (data: PreMatriculaFormData) => {
-      const response = await fetch(`${API_URL}/api/pre-matriculas`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      try {
+        const result = await apiClient.post("/api/pre-matriculas", {
           aluno: {
             nome: data.aluno.nome,
             dataNascimento: new Date(data.aluno.dataNascimento),
@@ -136,15 +132,11 @@ export default function NovaPreMatriculaPage() {
             autorizadoRetirada: data.responsavel.autorizadoRetirada,
           },
           observacoes: data.observacoes,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Erro ao criar pré-matrícula");
+        });
+        return result;
+      } catch (error: any) {
+        throw new Error(error?.message || "Erro ao criar pré-matrícula");
       }
-
-      return response.json();
     },
     onSuccess: () => {
       toast.success("Pré-matrícula criada com sucesso!");

@@ -16,7 +16,7 @@ import StatusBadge from "@/components/status-badge";
 import MatriculaActionsMenu from "@/components/matricula-actions-menu";
 import { Plus, Eye, Edit, GraduationCap, FileText } from "lucide-react";
 import Link from "next/link";
-import { API_URL } from "@/lib/api-client";
+import { apiClient } from "@/lib/api-client";
 
 type MatriculaRow = {
   id: string;
@@ -127,34 +127,30 @@ export default function MatriculasPage() {
       const params = new URLSearchParams();
       if (filtroStatus !== "todos") params.set("status", filtroStatus);
       if (filtroTurma !== "todos") params.set("etapa", filtroTurma);
-      const response = await fetch(
-        `${API_URL}/api/matriculas?${params.toString()}`,
-        {
-          credentials: "include",
-        }
-      );
-      if (!response.ok) {
-        console.error("❌ Erro ao buscar matrículas:", response.status);
+      
+      try {
+        const result = await apiClient.get(`/api/matriculas?${params.toString()}`);
+        console.log("📦 Resposta da API:", result);
+        const data = (result?.data || []) as Array<any>;
+        console.log(`✅ ${data.length} matrículas carregadas`);
+        return data.map((item) => ({
+          id: item.id,
+          protocolo: item.protocoloLocal,
+          aluno: item.aluno?.nome || "Sem nome",
+          responsavel: item.responsavel?.nome || "Sem nome",
+          turma: item.turma ? `${item.turma.nome} - ${item.turma.turno}` : null,
+          status: item.status,
+          data: new Date(item.createdAt).toLocaleDateString("pt-BR"),
+          cuidadora: Boolean(item.aluno?.necessidadesEspeciais),
+          // Dados completos para o modal
+          alunoData: item.aluno,
+          responsavelData: item.responsavel,
+          turmaData: item.turma,
+        }));
+      } catch (error) {
+        console.error("❌ Erro ao buscar matrículas:", error);
         return [];
       }
-      const result = await response.json();
-      console.log("📦 Resposta da API:", result);
-      const data = (result?.data || []) as Array<any>;
-      console.log(`✅ ${data.length} matrículas carregadas`);
-      return data.map((item) => ({
-        id: item.id,
-        protocolo: item.protocoloLocal,
-        aluno: item.aluno?.nome || "Sem nome",
-        responsavel: item.responsavel?.nome || "Sem nome",
-        turma: item.turma ? `${item.turma.nome} - ${item.turma.turno}` : null,
-        status: item.status,
-        data: new Date(item.createdAt).toLocaleDateString("pt-BR"),
-        cuidadora: Boolean(item.aluno?.necessidadesEspeciais),
-        // Dados completos para o modal
-        alunoData: item.aluno,
-        responsavelData: item.responsavel,
-        turmaData: item.turma,
-      }));
     },
   });
 

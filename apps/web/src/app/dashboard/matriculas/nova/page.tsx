@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
 import { Loader2, Save, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-import { API_URL } from "@/lib/api-client";
+import { apiClient } from "@/lib/api-client";
 
 type PreResumo = {
   id: string;
@@ -61,12 +61,15 @@ export default function NovaMatriculaPage() {
     queryKey: ["pre-matriculas", searchPre],
     queryFn: async (): Promise<PreResumo[]> => {
       const params = new URLSearchParams();
-      params.set("status", "pre"); // Filtrar apenas pré-matrículas não aprovadas
+      params.set("status", "pre");
       if (searchPre) params.set("search", searchPre);
-      const res = await fetch(`${API_URL}/api/pre-matriculas?${params}`);
-      if (!res.ok) return [];
-      const json = await res.json();
-      return (json.data || []) as PreResumo[];
+      try {
+        const result = await apiClient.get(`/api/pre-matriculas?${params}`);
+        return (result.data || []) as PreResumo[];
+      } catch (error) {
+        console.error("Erro ao buscar pré-matrículas:", error);
+        return [];
+      }
     },
   });
 
@@ -75,7 +78,6 @@ export default function NovaMatriculaPage() {
     [pres, selectedPreId]
   );
 
-  // Auto-selecionar etapa quando pré-matrícula for selecionada
   useEffect(() => {
     if (selectedPre?.aluno?.etapa) {
       setEtapaFiltro(selectedPre.aluno.etapa);
@@ -89,10 +91,13 @@ export default function NovaMatriculaPage() {
       if (etapaFiltro !== "todos") params.set("etapa", etapaFiltro);
       if (turnoFiltro !== "todos") params.set("turno", turnoFiltro);
       params.set("limit", "20");
-      const res = await fetch(`${API_URL}/api/turmas?${params}`);
-      if (!res.ok) return [];
-      const json = await res.json();
-      return (json.data || []) as TurmaResumo[];
+      try {
+        const result = await apiClient.get(`/api/turmas?${params}`);
+        return (result.data || []) as TurmaResumo[];
+      } catch (error) {
+        console.error("Erro ao buscar turmas:", error);
+        return [];
+      }
     },
     enabled: !!selectedPreId,
   });
@@ -123,40 +128,15 @@ export default function NovaMatriculaPage() {
 
       console.log("📦 Payload:", payload);
 
-      const response = await fetch(
-        `${API_URL}/api/pre-matriculas/${selectedPreId}/converter`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-          credentials: "include",
-        }
-      );
-
-      console.log("📡 Response status:", response.status);
-
-      // Tentar pegar o texto da resposta primeiro
-      const responseText = await response.text();
-      console.log("📄 Response text:", responseText);
-
-      if (!response.ok) {
-        let errorData: any = {};
-        try {
-          errorData = responseText ? JSON.parse(responseText) : {};
-        } catch (e) {
-          console.error("❌ Erro ao parsear JSON:", e);
-          console.error("❌ Response text:", responseText);
-        }
-        console.error("❌ Erro na resposta:", errorData);
+      try {
+        const result = await apiClient.post(`/api/pre-matriculas/${selectedPreId}/converter`, payload);
+        console.log("✅ Matrícula criada:", result);
+        return result;
+      } catch (error: any) {
+        console.error("❌ Erro ao criar matrícula:", error);
 
         // Mapear erros específicos para mensagens mais claras
-        let errorMessage =
-          errorData.message ||
-          errorData.error ||
-          responseText ||
-          `Erro ${response.status}: Falha ao criar matrícula`;
+        let errorMessage = error?.message || "Falha ao criar matrícula";
 
         if (errorMessage.includes("não possui vagas")) {
           errorMessage =
@@ -174,18 +154,6 @@ export default function NovaMatriculaPage() {
 
         throw new Error(errorMessage);
       }
-
-      // Parsear o JSON de sucesso
-      let result: any = {};
-      try {
-        result = responseText ? JSON.parse(responseText) : {};
-      } catch (e) {
-        console.error("❌ Erro ao parsear JSON de sucesso:", e);
-        throw new Error("Resposta do servidor não é um JSON válido");
-      }
-
-      console.log("✅ Matrícula criada:", result);
-      return result;
     },
     onSuccess: () => {
       toast.success("Matrícula criada com sucesso!");

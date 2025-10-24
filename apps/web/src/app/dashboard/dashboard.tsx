@@ -16,7 +16,7 @@ import {
   Eye,
 } from "lucide-react";
 import Link from "next/link";
-import { API_URL } from "@/lib/api-client";
+import { apiClient } from "@/lib/api-client";
 
 // Dados mock para demonstração
 const mockStats = {
@@ -86,22 +86,23 @@ export default function Dashboard() {
   const { data: matriculasRecentes, isLoading: matriculasLoading } = useQuery({
     queryKey: ["matriculas-recentes"],
     queryFn: async (): Promise<MatriculaRow[]> => {
-      const response = await fetch(`${API_URL}/api/pre-matriculas?limit=5`);
-      if (!response.ok) {
+      try {
+        const result = await apiClient.get("/api/pre-matriculas?limit=5");
+        const data = (result?.data || []) as Array<any>;
+        // Mapear para o formato esperado pela tabela
+        return data.map((item) => ({
+          id: item.id,
+          protocolo: item.protocoloLocal,
+          aluno: item.aluno?.nome,
+          responsavel: item.responsavel?.nome,
+          status: item.status,
+          data: new Date(item.createdAt).toISOString().slice(0, 10),
+        }));
+      } catch (error) {
         // Em caso de erro, retornar lista vazia para não quebrar o dashboard
+        console.error("Erro ao buscar matrículas recentes:", error);
         return [];
       }
-      const result = await response.json();
-      const data = (result?.data || []) as Array<any>;
-      // Mapear para o formato esperado pela tabela
-      return data.map((item) => ({
-        id: item.id,
-        protocolo: item.protocoloLocal,
-        aluno: item.aluno?.nome,
-        responsavel: item.responsavel?.nome,
-        status: item.status,
-        data: new Date(item.createdAt).toISOString().slice(0, 10),
-      }));
     },
   });
 
