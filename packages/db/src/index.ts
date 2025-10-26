@@ -34,3 +34,4 @@ export const db = drizzle(pool);
 export * from "./schema/auth.js";
 export * from "./schema/matriculas.js";
 export * from "./schema/relatorios.js";
+export * from "./schema/sync.js";

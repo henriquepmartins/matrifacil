@@ -36,6 +36,13 @@
       "when": 1760991317787,
       "tag": "0004_nappy_cyclops",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1761498473895,
+      "tag": "0005_glossy_luminals",
+      "breakpoints": true
     }
   ]
 }

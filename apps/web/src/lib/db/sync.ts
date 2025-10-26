@@ -1,4 +1,7 @@
 import { db, type SyncQueueItem } from "./index";
+import { buildSyncBatch } from "../sync/batch-builder.js";
+import { reconcileData } from "../sync/reconciliation.js";
+import type { SyncMapping } from "../sync/reconciliation.js";
 
 const MAX_RETRIES = 3;
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -29,7 +32,7 @@ export function isOnline(): boolean {
 }
 
 /**
- * Sincroniza operações pendentes com o servidor
+ * Sincroniza operações pendentes com o servidor usando batch
  */
 export async function syncPendingOperations(): Promise<{
   success: number;
@@ -40,57 +43,46 @@ export async function syncPendingOperations(): Promise<{
     return { success: 0, failed: 0 };
   }
 
-  // Busca todos os itens e filtra no JavaScript para evitar problemas com boolean no IndexedDB
-  const allItems = await db.syncQueue.toArray();
-  const pendingItems = allItems.filter(
-    (item) => !item.synced && item.retries < MAX_RETRIES
-  );
+  try {
+    console.log("🔄 Preparando lote de sincronização...");
 
-  if (pendingItems.length === 0) {
-    return { success: 0, failed: 0 };
-  }
+    // Construir lote de sincronização
+    const batch = await buildSyncBatch();
 
-  console.log(`🔄 Sincronizando ${pendingItems.length} operações pendentes...`);
-
-  let success = 0;
-  let failed = 0;
-
-  for (const item of pendingItems) {
-    try {
-      await syncItem(item);
-      await db.syncQueue.update(item.id!, { synced: true });
-      success++;
-    } catch (error) {
-      failed++;
-      const errorMessage =
-        error instanceof Error ? error.message : "Erro desconhecido";
-
-      await db.syncQueue.update(item.id!, {
-        retries: item.retries + 1,
-        error: errorMessage,
-      });
-
-      // Se excedeu o número de tentativas, marca como sincronizado para não tentar mais
-      if (item.retries + 1 >= MAX_RETRIES) {
-        console.error(
-          `❌ Falha permanente ao sincronizar item ${item.id}:`,
-          errorMessage
-        );
-        await db.syncQueue.update(item.id!, { synced: true });
-      }
+    if (batch.length === 0) {
+      console.log("📝 Nenhuma operação pendente para sincronizar");
+      return { success: 0, failed: 0 };
     }
-  }
 
-  console.log(
-    `✅ Sincronização concluída: ${success} sucesso, ${failed} falhas`
-  );
-  return { success, failed };
+    console.log(`📦 Lote preparado com ${batch.length} itens`);
+
+    // Enviar lote para o servidor
+    const result = await sendBatch(batch);
+
+    if (result.success && result.mappings.length > 0) {
+      // Reconciliar dados locais com IDs globais
+      await reconcileData(result.mappings);
+      console.log(`✅ ${result.mappings.length} registros reconciliados`);
+    }
+
+    return {
+      success: result.mappings.length,
+      failed: result.conflicts.length,
+    };
+  } catch (error) {
+    console.error("❌ Erro na sincronização:", error);
+    return { success: 0, failed: 1 };
+  }
 }
 
 /**
- * Sincroniza um item individual
+ * Envia um lote de sincronização para o servidor
  */
-async function syncItem(item: SyncQueueItem): Promise<void> {
+async function sendBatch(batch: any[]): Promise<{
+  success: boolean;
+  mappings: SyncMapping[];
+  conflicts: any[];
+}> {
   const token = await getAuthToken();
 
   const headers: HeadersInit = {
@@ -101,33 +93,26 @@ async function syncItem(item: SyncQueueItem): Promise<void> {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  let endpoint = "";
-  let method = "";
-  let body: any = item.data;
+  // Obter metadata da última sincronização
+  const lastSyncMeta = await db.syncMetadata.get("last_sync");
+  const lastSync = lastSyncMeta?.value || 0;
 
-  // Mapeia a operação para o endpoint correto
-  switch (item.table) {
-    case "users":
-      if (item.action === "CREATE") {
-        endpoint = "/api/auth/signup";
-        method = "POST";
-      } else if (item.action === "UPDATE") {
-        endpoint = `/api/users/${item.data.id}`;
-        method = "PUT";
-      } else if (item.action === "DELETE") {
-        endpoint = `/api/users/${item.data.id}`;
-        method = "DELETE";
-      }
-      break;
-    // Adicione outros casos conforme necessário
-    default:
-      throw new Error(`Tabela não suportada: ${item.table}`);
-  }
+  // Obter device ID
+  const deviceId = await getDeviceId();
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    method,
+  const payload = {
+    batch,
+    device_id: deviceId,
+    last_sync: lastSync,
+    app_version: "1.0.0",
+  };
+
+  console.log(`📤 Enviando lote com ${batch.length} itens...`);
+
+  const response = await fetch(`${API_URL}/api/sync`, {
+    method: "POST",
     headers,
-    body: method !== "DELETE" ? JSON.stringify(body) : undefined,
+    body: JSON.stringify(payload),
     credentials: "include",
   });
 
@@ -137,6 +122,42 @@ async function syncItem(item: SyncQueueItem): Promise<void> {
       .catch(() => ({ message: response.statusText }));
     throw new Error(error.message || `HTTP ${response.status}`);
   }
+
+  const result = await response.json();
+
+  console.log(
+    `✅ Lote sincronizado: ${result.data.mappings.length} sucessos, ${result.data.conflicts.length} conflitos`
+  );
+
+  return {
+    success: result.success,
+    mappings: result.data.mappings || [],
+    conflicts: result.data.conflicts || [],
+  };
+}
+
+/**
+ * Gera ou recupera ID do dispositivo
+ */
+async function getDeviceId(): Promise<string> {
+  const storedDeviceId = await db.syncMetadata.get("device_id");
+
+  if (storedDeviceId) {
+    return storedDeviceId.value;
+  }
+
+  // Gerar novo device ID
+  const deviceId = `device-${Date.now()}-${Math.random()
+    .toString(36)
+    .substring(2, 9)}`;
+
+  await db.syncMetadata.put({
+    key: "device_id",
+    value: deviceId,
+    updatedAt: new Date(),
+  });
+
+  return deviceId;
 }
 
 /**
