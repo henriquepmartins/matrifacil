@@ -1,0 +1,2 @@
+import { aluno, contatoEmergencia, documento, etapaEnum, matricula, pendencia, responsavel, statusDocumentoEnum, statusMatriculaEnum, tipoDocumentoEnum, turma, turnoEnum } from "../matriculas-v99Swx4X.js";
+export { aluno, contatoEmergencia, documento, etapaEnum, matricula, pendencia, responsavel, statusDocumentoEnum, statusMatriculaEnum, tipoDocumentoEnum, turma, turnoEnum };

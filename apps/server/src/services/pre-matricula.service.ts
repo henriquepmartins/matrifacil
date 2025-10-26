@@ -1,0 +1,462 @@
+import { preMatriculaRepository } from "../repositories/pre-matricula.repository.js";
+import type {
+  CreatePreMatriculaData,
+  UpdatePreMatriculaData,
+  PreMatriculaFilters,
+  PreMatriculaWithDetails,
+  MatriculaFilters,
+} from "../repositories/pre-matricula.repository.js";
+import { AppError } from "../middlewares/error.middleware.js";
+import { db } from "../config/database.config.js";
+import { turma } from "@matrifacil-/db/schema/matriculas.js";
+import { eq } from "drizzle-orm";
+
+/**
+ * @deprecated Esta classe será removida em versão futura.
+ * Use os Use Cases domain-driven em vez disso:
+ * - CreatePreMatriculaUseCase
+ * - ConvertToMatriculaCompletaUseCase
+ * - ApproveMatriculaUseCase
+ * - GetMatriculasUseCase
+ */
+export class PreMatriculaService {
+  private validateCPF(cpf: string): boolean {
+    const cleanCPF = cpf.replace(/\D/g, "");
+    if (cleanCPF.length !== 11) return false;
+
+    if (/^(\d)\1{10}$/.test(cleanCPF)) return false;
+
+    let sum = 0;
+    for (let i = 0; i < 9; i++) {
+      sum += parseInt(cleanCPF.charAt(i)) * (10 - i);
+    }
+    let remainder = (sum * 10) % 11;
+    if (remainder === 10 || remainder === 11) remainder = 0;
+    if (remainder !== parseInt(cleanCPF.charAt(9))) return false;
+
+    sum = 0;
+    for (let i = 0; i < 10; i++) {
+      sum += parseInt(cleanCPF.charAt(i)) * (11 - i);
+    }
+    remainder = (sum * 10) % 11;
+    if (remainder === 10 || remainder === 11) remainder = 0;
+    if (remainder !== parseInt(cleanCPF.charAt(10))) return false;
+
+    return true;
+  }
+
+  private validatePhone(phone: string): boolean {
+    const cleanPhone = phone.replace(/\D/g, "");
+    return cleanPhone.length >= 10 && cleanPhone.length <= 11;
+  }
+
+  private validateEmail(email: string): boolean {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  }
+
+  private validateCreateData(data: CreatePreMatriculaData): void {
+    if (!data.aluno.nome || data.aluno.nome.trim().length < 2) {
+      throw new AppError(
+        400,
+        "Nome do aluno é obrigatório e deve ter pelo menos 2 caracteres"
+      );
+    }
+
+    if (!data.aluno.dataNascimento) {
+      throw new AppError(400, "Data de nascimento do aluno é obrigatória");
+    }
+
+    const age =
+      new Date().getFullYear() -
+      new Date(data.aluno.dataNascimento).getFullYear();
+    if (age < 0 || age > 18) {
+      throw new AppError(400, "Idade do aluno deve estar entre 0 e 18 anos");
+    }
+
+    if (!data.aluno.etapa) {
+      throw new AppError(400, "Etapa educacional é obrigatória");
+    }
+
+    if (!data.responsavel.nome || data.responsavel.nome.trim().length < 2) {
+      throw new AppError(
+        400,
+        "Nome do responsável é obrigatório e deve ter pelo menos 2 caracteres"
+      );
+    }
+
+    if (!data.responsavel.cpf || !this.validateCPF(data.responsavel.cpf)) {
+      throw new AppError(
+        400,
+        "CPF do responsável é obrigatório e deve ser válido"
+      );
+    }
+
+    if (
+      !data.responsavel.telefone ||
+      !this.validatePhone(data.responsavel.telefone)
+    ) {
+      throw new AppError(
+        400,
+        "Telefone do responsável é obrigatório e deve ser válido"
+      );
+    }
+
+    if (
+      !data.responsavel.endereco ||
+      data.responsavel.endereco.trim().length < 5
+    ) {
+      throw new AppError(
+        400,
+        "Endereço do responsável é obrigatório e deve ter pelo menos 5 caracteres"
+      );
+    }
+
+    if (!data.responsavel.bairro || data.responsavel.bairro.trim().length < 2) {
+      throw new AppError(
+        400,
+        "Bairro do responsável é obrigatório e deve ter pelo menos 2 caracteres"
+      );
+    }
+
+    if (data.responsavel.email && !this.validateEmail(data.responsavel.email)) {
+      throw new AppError(400, "Email do responsável deve ser válido");
+    }
+  }
+
+  private validateUpdateData(data: UpdatePreMatriculaData): void {
+    if (data.aluno) {
+      if (data.aluno.nome && data.aluno.nome.trim().length < 2) {
+        throw new AppError(
+          400,
+          "Nome do aluno deve ter pelo menos 2 caracteres"
+        );
+      }
+
+      if (data.aluno.dataNascimento) {
+        const age =
+          new Date().getFullYear() -
+          new Date(data.aluno.dataNascimento).getFullYear();
+        if (age < 0 || age > 18) {
+          throw new AppError(
+            400,
+            "Idade do aluno deve estar entre 0 e 18 anos"
+          );
+        }
+      }
+    }
+
+    if (data.responsavel) {
+      if (data.responsavel.nome && data.responsavel.nome.trim().length < 2) {
+        throw new AppError(
+          400,
+          "Nome do responsável deve ter pelo menos 2 caracteres"
+        );
+      }
+
+      if (data.responsavel.cpf && !this.validateCPF(data.responsavel.cpf)) {
+        throw new AppError(400, "CPF do responsável deve ser válido");
+      }
+
+      if (
+        data.responsavel.telefone &&
+        !this.validatePhone(data.responsavel.telefone)
+      ) {
+        throw new AppError(400, "Telefone do responsável deve ser válido");
+      }
+
+      if (
+        data.responsavel.endereco &&
+        data.responsavel.endereco.trim().length < 5
+      ) {
+        throw new AppError(
+          400,
+          "Endereço do responsável deve ter pelo menos 5 caracteres"
+        );
+      }
+
+      if (
+        data.responsavel.bairro &&
+        data.responsavel.bairro.trim().length < 2
+      ) {
+        throw new AppError(
+          400,
+          "Bairro do responsável deve ter pelo menos 2 caracteres"
+        );
+      }
+
+      if (
+        data.responsavel.email &&
+        !this.validateEmail(data.responsavel.email)
+      ) {
+        throw new AppError(400, "Email do responsável deve ser válido");
+      }
+    }
+  }
+
+  async createPreMatricula(
+    data: CreatePreMatriculaData
+  ): Promise<PreMatriculaWithDetails> {
+    this.validateCreateData(data);
+
+    // Verificar se CPF já existe (responsável possui unique index)
+    // const existingResponsavel =
+    //   await preMatriculaRepository.findResponsavelByCPF(data.responsavel.cpf);
+    // if (existingResponsavel) {
+    //   throw new AppError(400, "Já existe uma pré-matrícula com este CPF");
+    // }
+
+    return preMatriculaRepository.createPreMatricula(data);
+  }
+
+  async getPreMatriculas(filters: PreMatriculaFilters = {}): Promise<{
+    data: PreMatriculaWithDetails[];
+    total: number;
+  }> {
+    const data = await preMatriculaRepository.findAll(filters);
+    const total = await preMatriculaRepository.count(filters);
+
+    return { data, total };
+  }
+
+  async getPreMatriculaById(id: string): Promise<PreMatriculaWithDetails> {
+    if (!id) {
+      throw new AppError(400, "ID da pré-matrícula é obrigatório");
+    }
+
+    const preMatricula = await preMatriculaRepository.findById(id);
+    if (!preMatricula) {
+      throw new AppError(404, "Pré-matrícula não encontrada");
+    }
+
+    return preMatricula;
+  }
+
+  async updatePreMatricula(
+    id: string,
+    data: UpdatePreMatriculaData
+  ): Promise<PreMatriculaWithDetails> {
+    if (!id) {
+      throw new AppError(400, "ID da pré-matrícula é obrigatório");
+    }
+
+    this.validateUpdateData(data);
+
+    // Verificar se pré-matrícula existe
+    const existing = await preMatriculaRepository.findById(id);
+    if (!existing) {
+      throw new AppError(404, "Pré-matrícula não encontrada");
+    }
+
+    // Se CPF foi alterado, verificar se já existe
+    if (
+      data.responsavel?.cpf &&
+      data.responsavel.cpf !== existing.responsavel.cpf
+    ) {
+      const existingByCPF = await preMatriculaRepository.findAll({
+        search: data.responsavel.cpf,
+      });
+
+      if (existingByCPF.length > 0) {
+        throw new AppError(400, "Já existe uma pré-matrícula com este CPF");
+      }
+    }
+
+    const updated = await preMatriculaRepository.updatePreMatricula(id, data);
+    if (!updated) {
+      throw new AppError(404, "Pré-matrícula não encontrada");
+    }
+
+    return updated;
+  }
+
+  async deletePreMatricula(id: string): Promise<void> {
+    if (!id) {
+      throw new AppError(400, "ID da pré-matrícula é obrigatório");
+    }
+
+    const deleted = await preMatriculaRepository.deletePreMatricula(id);
+    if (!deleted) {
+      throw new AppError(404, "Pré-matrícula não encontrada");
+    }
+  }
+
+  async convertToMatriculaCompleta(
+    id: string,
+    turmaId?: string,
+    dataMatriculaOverride?: Date,
+    documentosIniciais?: { tipo: string; observacoes?: string }[]
+  ): Promise<PreMatriculaWithDetails> {
+    if (!id) {
+      throw new AppError(400, "ID da pré-matrícula é obrigatório");
+    }
+
+    const existing = await preMatriculaRepository.findById(id);
+    if (!existing) {
+      throw new AppError(404, "Pré-matrícula não encontrada");
+    }
+
+    if (existing.status !== "pre") {
+      throw new AppError(400, "Apenas pré-matrículas podem ser convertidas");
+    }
+
+    const converted = await preMatriculaRepository.convertToMatriculaCompleta(
+      id,
+      turmaId,
+      dataMatriculaOverride,
+      documentosIniciais
+    );
+    if (!converted) {
+      throw new AppError(404, "Pré-matrícula não encontrada");
+    }
+
+    return converted;
+  }
+
+  async getPreMatriculasStats(): Promise<{
+    total: number;
+    porEtapa: Record<string, number>;
+    recentes: number;
+  }> {
+    const allPreMatriculas = await preMatriculaRepository.findAll();
+    const recentes = await preMatriculaRepository.findAll({
+      limit: 5,
+    });
+
+    const porEtapa = allPreMatriculas.reduce((acc, preMatricula) => {
+      const etapa = preMatricula.aluno.etapa;
+      acc[etapa] = (acc[etapa] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      total: allPreMatriculas.length,
+      porEtapa,
+      recentes: recentes.length,
+    };
+  }
+
+  async getMatriculas(filters: MatriculaFilters = {}): Promise<{
+    data: PreMatriculaWithDetails[];
+    total: number;
+  }> {
+    const data = await preMatriculaRepository.findAllMatriculas(filters);
+    // Observação: para contagem precisa em filtros complexos, crie um count dedicado
+    return { data, total: data.length };
+  }
+
+  async updateMatriculasWithTurmas(): Promise<void> {
+    await preMatriculaRepository.updateMatriculasWithTurmas();
+  }
+
+  async updateMatricula(id: string, data: any): Promise<any> {
+    if (!id) {
+      throw new AppError(400, "ID da matrícula é obrigatório");
+    }
+
+    // Validar dados básicos
+    if (data.alunoNome && data.alunoNome.trim().length < 2) {
+      throw new AppError(400, "Nome do aluno deve ter pelo menos 2 caracteres");
+    }
+
+    if (data.responsavelNome && data.responsavelNome.trim().length < 2) {
+      throw new AppError(
+        400,
+        "Nome do responsável deve ter pelo menos 2 caracteres"
+      );
+    }
+
+    const result = await preMatriculaRepository.updateMatricula(id, data);
+    if (!result) {
+      throw new AppError(404, "Matrícula não encontrada");
+    }
+
+    return result;
+  }
+
+  async deleteMatricula(id: string): Promise<void> {
+    if (!id) {
+      throw new AppError(400, "ID da matrícula é obrigatório");
+    }
+
+    const deleted = await preMatriculaRepository.deleteMatricula(id);
+    if (!deleted) {
+      throw new AppError(404, "Matrícula não encontrada");
+    }
+  }
+
+  async approveMatricula(id: string, turmaId?: string): Promise<any> {
+    if (!id) {
+      throw new AppError(400, "ID da matrícula é obrigatório");
+    }
+
+    if (turmaId) {
+      // Verifica se a turma existe e está ativa
+      const turmaResult = await db
+        .select()
+        .from(turma)
+        .where(eq(turma.id, turmaId))
+        .limit(1);
+
+      const turmaData = turmaResult[0];
+
+      if (!turmaData) {
+        throw new AppError(404, "Turma não encontrada");
+      }
+
+      if (!turmaData.ativa) {
+        throw new AppError(400, "Turma não está ativa");
+      }
+
+      if (turmaData.vagasDisponiveis <= 0) {
+        throw new AppError(400, "Turma sem vagas disponíveis");
+      }
+
+      // Atualiza vagas da turma
+      await db
+        .update(turma)
+        .set({
+          vagasDisponiveis: turmaData.vagasDisponiveis - 1,
+        })
+        .where(eq(turma.id, turmaId));
+    }
+
+    const result = await preMatriculaRepository.approveMatricula(id, turmaId);
+    if (!result) {
+      throw new AppError(404, "Matrícula não encontrada");
+    }
+
+    return result;
+  }
+
+  async buscarAlunos(filters: { search?: string; limit?: number }) {
+    const { search, limit = 20 } = filters;
+
+    // Busca alunos tanto de pré-matrículas quanto de matrículas completas
+    const matriculas = await preMatriculaRepository.findAllMatriculas({
+      search,
+      limit,
+    });
+
+    // Extrai dados únicos dos alunos
+    const alunosMap = new Map();
+
+    matriculas.forEach((matricula) => {
+      if (matricula.aluno) {
+        const alunoId = matricula.aluno.id;
+        if (!alunosMap.has(alunoId)) {
+          alunosMap.set(alunoId, {
+            id: matricula.aluno.id,
+            nome: matricula.aluno.nome,
+            responsavel: matricula.responsavel?.nome,
+            protocolo: matricula.protocoloLocal,
+          });
+        }
+      }
+    });
+
+    return Array.from(alunosMap.values()).slice(0, limit);
+  }
+}
+
+export const preMatriculaService = new PreMatriculaService();

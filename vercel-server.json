@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "name": "matrifacil-server",
+  "builds": [
+    {
+      "src": "apps/server/api/index.js",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["apps/server/dist/**", "packages/db/dist/**"]
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/apps/server/api/index.js"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "functions": {
+    "apps/server/api/index.js": {
+      "maxDuration": 30
+    }
+  },
+  "buildCommand": "cd apps/server && bun run vercel-build"
+}

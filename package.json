@@ -1,0 +1,40 @@
+{
+  "name": "matrifacil-",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "build:server": "turbo build --filter=server",
+    "start:server": "node apps/server/dist/index.js",
+    "check-types": "turbo check-types",
+    "dev:native": "turbo -F native dev",
+    "dev:web": "turbo -F web dev",
+    "dev:server": "turbo -F server dev",
+    "db:push": "turbo -F @matrifacil-/db db:push",
+    "db:studio": "turbo -F @matrifacil-/db db:studio",
+    "db:generate": "turbo -F @matrifacil-/db db:generate",
+    "db:migrate": "turbo -F @matrifacil-/db db:migrate"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "@types/uuid": "^11.0.0",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "react-hook-form": "^7.65.0",
+    "uuid": "^13.0.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.4",
+    "@types/node": "^22.13.11",
+    "shadcn": "^3.4.0",
+    "esbuild": "^0.19.0",
+    "turbo": "^2.5.4"
+  },
+  "packageManager": "bun@1.1.43"
+}

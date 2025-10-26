@@ -1,0 +1,3 @@
+import { account, aluno, contatoEmergencia, documento, etapa, formatoRelatorio, matricula, pendencia, relatorioGerado, responsavel, session, statusDocumento, statusMatricula, tipoDocumento, tipoRelatorio, turma, turno, user, verification } from "../schema-Dma5Noty.js";
+
+export { account, aluno, contatoEmergencia, documento, etapa, formatoRelatorio, matricula, pendencia, relatorioGerado, responsavel, session, statusDocumento, statusMatricula, tipoDocumento, tipoRelatorio, turma, turno, user, verification };

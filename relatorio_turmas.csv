@@ -1,0 +1,7 @@
+Nome da Turma,Etapa,Turno,Capacidade,Vagas Disponíveis,Total Matrículas,Matrículas Completas,Pré-Matrículas,Percentual Ocupação,Ano Letivo,Status
+"Berçário A - Manhã",bercario,manha,15,14,1,1,0,6.67%,2025,Ativa
+"Berçário B - Tarde",bercario,tarde,15,15,0,0,0,0%,2025,Ativa
+"Maternal A - Manhã",maternal,manha,20,16,4,4,0,20%,2025,Ativa
+"Maternal B - Tarde",maternal,tarde,20,20,0,0,0,0%,2025,Ativa
+"Pré-Escola A - Manhã",pre_escola,manha,25,25,0,0,0,0%,2025,Ativa
+"Pré-Escola B - Tarde",pre_escola,tarde,25,25,0,0,0,0%,2025,Ativa

@@ -1,0 +1,151 @@
+import * as drizzle_orm_pg_core146 from "drizzle-orm/pg-core";
+
+//#region src/schema/relatorios.d.ts
+declare const tipoRelatorioEnum: drizzle_orm_pg_core146.PgEnum<["matriculas", "pre_matriculas", "turmas", "documentos", "pendencias", "geral"]>;
+declare const formatoRelatorioEnum: drizzle_orm_pg_core146.PgEnum<["pdf", "csv"]>;
+declare const relatorioGerado: drizzle_orm_pg_core146.PgTableWithColumns<{
+  name: "relatorio_gerado";
+  schema: undefined;
+  columns: {
+    id: drizzle_orm_pg_core146.PgColumn<{
+      name: "id";
+      tableName: "relatorio_gerado";
+      dataType: "string";
+      columnType: "PgText";
+      data: string;
+      driverParam: string;
+      notNull: true;
+      hasDefault: false;
+      isPrimaryKey: true;
+      isAutoincrement: false;
+      hasRuntimeDefault: false;
+      enumValues: [string, ...string[]];
+      baseColumn: never;
+      identity: undefined;
+      generated: undefined;
+    }, {}, {}>;
+    tipo: drizzle_orm_pg_core146.PgColumn<{
+      name: "tipo";
+      tableName: "relatorio_gerado";
+      dataType: "string";
+      columnType: "PgEnumColumn";
+      data: "matriculas" | "pre_matriculas" | "turmas" | "documentos" | "pendencias" | "geral";
+      driverParam: string;
+      notNull: true;
+      hasDefault: false;
+      isPrimaryKey: false;
+      isAutoincrement: false;
+      hasRuntimeDefault: false;
+      enumValues: ["matriculas", "pre_matriculas", "turmas", "documentos", "pendencias", "geral"];
+      baseColumn: never;
+      identity: undefined;
+      generated: undefined;
+    }, {}, {}>;
+    formato: drizzle_orm_pg_core146.PgColumn<{
+      name: "formato";
+      tableName: "relatorio_gerado";
+      dataType: "string";
+      columnType: "PgEnumColumn";
+      data: "pdf" | "csv";
+      driverParam: string;
+      notNull: true;
+      hasDefault: false;
+      isPrimaryKey: false;
+      isAutoincrement: false;
+      hasRuntimeDefault: false;
+      enumValues: ["pdf", "csv"];
+      baseColumn: never;
+      identity: undefined;
+      generated: undefined;
+    }, {}, {}>;
+    filtros: drizzle_orm_pg_core146.PgColumn<{
+      name: "filtros";
+      tableName: "relatorio_gerado";
+      dataType: "json";
+      columnType: "PgJsonb";
+      data: unknown;
+      driverParam: unknown;
+      notNull: true;
+      hasDefault: false;
+      isPrimaryKey: false;
+      isAutoincrement: false;
+      hasRuntimeDefault: false;
+      enumValues: undefined;
+      baseColumn: never;
+      identity: undefined;
+      generated: undefined;
+    }, {}, {}>;
+    usuarioId: drizzle_orm_pg_core146.PgColumn<{
+      name: "usuario_id";
+      tableName: "relatorio_gerado";
+      dataType: "string";
+      columnType: "PgText";
+      data: string;
+      driverParam: string;
+      notNull: true;
+      hasDefault: false;
+      isPrimaryKey: false;
+      isAutoincrement: false;
+      hasRuntimeDefault: false;
+      enumValues: [string, ...string[]];
+      baseColumn: never;
+      identity: undefined;
+      generated: undefined;
+    }, {}, {}>;
+    nomeArquivo: drizzle_orm_pg_core146.PgColumn<{
+      name: "nome_arquivo";
+      tableName: "relatorio_gerado";
+      dataType: "string";
+      columnType: "PgText";
+      data: string;
+      driverParam: string;
+      notNull: true;
+      hasDefault: false;
+      isPrimaryKey: false;
+      isAutoincrement: false;
+      hasRuntimeDefault: false;
+      enumValues: [string, ...string[]];
+      baseColumn: never;
+      identity: undefined;
+      generated: undefined;
+    }, {}, {}>;
+    tamanhoArquivo: drizzle_orm_pg_core146.PgColumn<{
+      name: "tamanho_arquivo";
+      tableName: "relatorio_gerado";
+      dataType: "string";
+      columnType: "PgText";
+      data: string;
+      driverParam: string;
+      notNull: false;
+      hasDefault: false;
+      isPrimaryKey: false;
+      isAutoincrement: false;
+      hasRuntimeDefault: false;
+      enumValues: [string, ...string[]];
+      baseColumn: never;
+      identity: undefined;
+      generated: undefined;
+    }, {}, {}>;
+    createdAt: drizzle_orm_pg_core146.PgColumn<{
+      name: "created_at";
+      tableName: "relatorio_gerado";
+      dataType: "date";
+      columnType: "PgTimestamp";
+      data: Date;
+      driverParam: string;
+      notNull: true;
+      hasDefault: true;
+      isPrimaryKey: false;
+      isAutoincrement: false;
+      hasRuntimeDefault: false;
+      enumValues: undefined;
+      baseColumn: never;
+      identity: undefined;
+      generated: undefined;
+    }, {}, {}>;
+  };
+  dialect: "pg";
+}>;
+//#endregion
+export { formatoRelatorioEnum, relatorioGerado, tipoRelatorioEnum };
+//# sourceMappingURL=relatorios-Djl1uoXm.d.ts.map
