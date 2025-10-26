@@ -8,6 +8,7 @@
     "start": "node api/index.js"
   },
   "dependencies": {
+    "@matrifacil-/db": "workspace:*",
     "@scalar/api-reference": "^1.38.1",
     "@scalar/express-api-reference": "^0.8.22",
     "bcrypt": "^5.1.1",

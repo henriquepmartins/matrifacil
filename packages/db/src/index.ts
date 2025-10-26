@@ -16,7 +16,6 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false,
-    require: true,
   },
   // Configurações de timeout e retry
   connectionTimeoutMillis: 60000,
@@ -24,12 +23,9 @@ const pool = new Pool({
   max: 20,
   // Configurações específicas para Supabase
   application_name: "matrifacil-server",
-  // Configurações de retry (removidas por incompatibilidade com PoolConfig)
   // Configurações adicionais para estabilidade
   keepAlive: true,
   keepAliveInitialDelayMillis: 0,
-  // Configurações específicas para Railway
-  family: 4,
 });
 
 export const db = drizzle(pool);
