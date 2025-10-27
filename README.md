@@ -21,18 +21,69 @@ First, install the dependencies:
 ```bash
 bun install
 ```
+
 ## Database Setup
 
 This project uses PostgreSQL with Drizzle ORM.
 
 1. Make sure you have a PostgreSQL database set up.
-2. Update your `apps/web/.env` file with your PostgreSQL connection details.
+2. Configure environment variables (see below).
 
 3. Apply the schema to your database:
+
 ```bash
 bun db:push
 ```
 
+## Environment Variables Setup
+
+### Quick Setup
+
+Run the setup script:
+
+```bash
+./scripts/setup-env.sh
+```
+
+This will create `.env` files with auto-generated JWT secrets.
+
+### Manual Setup
+
+#### Backend (`apps/server/.env`)
+
+```bash
+# Required
+DATABASE_URL=postgresql://user:password@localhost:5432/matrifacil
+JWT_SECRET=your_jwt_secret_min_32_chars
+CORS_ORIGIN=http://localhost:3001
+PORT=8080
+NODE_ENV=development
+
+# Optional - for cache and queues
+REDIS_URL=redis://localhost:6379
+
+# Optional - for document upload
+SUPABASE_URL=https://xxxxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+SUPABASE_STORAGE_BUCKET=documentos
+```
+
+See `apps/server/env.example` for all available options.
+
+#### Frontend (`apps/web/.env.local`)
+
+```bash
+# Required
+NEXT_PUBLIC_API_URL=http://localhost:8080
+
+# Optional - for Supabase integration
+NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+```
+
+See `apps/web/env.example` for all available options.
+
+**For detailed instructions, see [SYNC_CONFIGURATION.md](./SYNC_CONFIGURATION.md)**
 
 Then, run the development server:
 
@@ -41,12 +92,6 @@ bun dev
 ```
 
 Open [http://localhost:3001](http://localhost:3001) in your browser to see your fullstack application.
-
-
-
-
-
-
 
 ## Project Structure
 

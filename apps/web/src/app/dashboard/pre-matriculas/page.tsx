@@ -19,6 +19,11 @@ import { Plus, Eye, Edit, FileText, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
+import { isOnline } from "@/lib/utils/network";
+import {
+  cachePreMatriculasFromServer,
+  getPreMatriculasFromCache,
+} from "@/lib/services/pre-matricula-cache.service";
 
 interface PreMatricula {
   id: string;
@@ -73,15 +78,22 @@ export default function PreMatriculasPage() {
     queryKey: ["pre-matriculas"],
     queryFn: async () => {
       console.log("🔍 Buscando pré-matrículas...");
+
       try {
-        const result = await apiClient.get("/api/pre-matriculas");
-        console.log("📊 Resultado da API:", result);
-        console.log("📋 Dados:", result.data);
-        return result.data;
+        // Tentar buscar do servidor se online
+        if (isOnline()) {
+          console.log("🌐 Online - buscando do servidor e cacheando");
+          const serverData = await cachePreMatriculasFromServer();
+          return serverData;
+        }
       } catch (error) {
-        console.error("📡 Erro na requisição:", error);
-        throw new Error("Erro ao buscar pré-matrículas");
+        console.warn("⚠️ Erro ao buscar do servidor, usando cache", error);
       }
+
+      // Offline ou erro - buscar do cache
+      console.log("📴 Offline ou erro - usando cache local");
+      const cachedData = await getPreMatriculasFromCache();
+      return cachedData;
     },
   });
 

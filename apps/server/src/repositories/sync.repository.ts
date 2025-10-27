@@ -35,6 +35,10 @@ export class SyncRepository {
     batch: SyncBatchItem[],
     userId: string
   ): Promise<SyncResult> {
+    console.log(
+      `🔄 Processando batch com ${batch.length} itens para userId: ${userId}`
+    );
+
     const mappings: Array<{
       entity: string;
       id_local: string;
@@ -49,6 +53,9 @@ export class SyncRepository {
     // Processar em ordem de dependências
     for (const item of batch) {
       try {
+        console.log(
+          `📝 Processando ${item.entity} (operação: ${item.operation}, id_local: ${item.id_local})`
+        );
         let id_global: string | undefined;
 
         switch (item.entity) {
@@ -195,6 +202,9 @@ export class SyncRepository {
         }
 
         if (id_global) {
+          console.log(
+            `✅ ${item.entity} processado com sucesso (${item.id_local} → ${id_global})`
+          );
           mappings.push({
             entity: item.entity,
             id_local: item.id_local,
@@ -202,7 +212,7 @@ export class SyncRepository {
           });
         }
       } catch (error: any) {
-        console.error(`Erro ao processar ${item.entity}:`, error);
+        console.error(`❌ Erro ao processar ${item.entity}:`, error);
         conflicts.push({
           entity: item.entity,
           id_local: item.id_local,
@@ -211,6 +221,9 @@ export class SyncRepository {
       }
     }
 
+    console.log(
+      `🎉 Batch processado: ${mappings.length} sucessos, ${conflicts.length} falhas`
+    );
     return { mappings, conflicts };
   }
 

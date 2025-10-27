@@ -28,7 +28,10 @@ const pool = new Pool({
   keepAliveInitialDelayMillis: 0,
 });
 
-export const db = drizzle(pool);
+// Configuração do Drizzle - Prepared statements habilitados para conexão direta
+export const db = drizzle(pool, {
+  logger: false,
+});
 
 // Export schemas
 export * from "./schema/auth.js";

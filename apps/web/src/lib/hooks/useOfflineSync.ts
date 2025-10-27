@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   syncPendingOperations,
   getSyncQueueStats,
@@ -20,10 +20,12 @@ interface UseOfflineSyncReturn {
   isSyncing: boolean;
   stats: SyncStats;
   sync: () => Promise<void>;
+  lastSyncTime: Date | null;
+  error: string | null;
 }
 
 /**
- * Hook para gerenciar sincronização offline
+ * Hook para gerenciar sincronização offline com suporte bidirecional
  */
 export function useOfflineSync(): UseOfflineSyncReturn {
   const [isOnline, setIsOnline] = useState(true);
@@ -34,6 +36,8 @@ export function useOfflineSync(): UseOfflineSyncReturn {
     synced: 0,
     failed: 0,
   });
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   /**
    * Atualiza as estatísticas da fila
@@ -46,28 +50,88 @@ export function useOfflineSync(): UseOfflineSyncReturn {
   /**
    * Sincroniza operações pendentes manualmente
    */
-  const sync = async () => {
+  const sync = useCallback(async () => {
     if (!checkOnline()) {
       console.log("📡 Offline - não é possível sincronizar agora");
+      setError("Não há conexão com a internet");
       return;
     }
 
     setIsSyncing(true);
+    setError(null);
+
     try {
-      await syncPendingOperations();
+      console.log("🔄 Iniciando sincronização...");
+
+      // Esta função faz TUDO:
+      // 1. Coleta dados pendentes do IndexedDB
+      // 2. Envia para o servidor (POST /api/sync)
+      // 3. Servidor salva no Supabase
+      // 4. Recebe IDs globais do servidor
+      // 5. Atualiza o IndexedDB com os IDs globais
+      // 6. Marca registros como "synced"
+      const result = await syncPendingOperations();
+
+      console.log(
+        `📊 Resultado: ${result.success} sucessos, ${result.failed} falhas`
+      );
+
+      if (result.success > 0) {
+        setLastSyncTime(new Date());
+        console.log(
+          `✅ ${result.success} registros sincronizados e salvos com sucesso!`
+        );
+      }
+
+      if (result.failed > 0) {
+        setError(`${result.failed} operação(ões) falharam na sincronização`);
+      } else if (result.success > 0) {
+        // Sucesso - limpar erro se existir
+        setError(null);
+      }
+
+      // Atualizar estatísticas após sincronização
       await updateStats();
-    } catch (error) {
-      console.error("Erro ao sincronizar:", error);
+
+      console.log("✅ Sincronização finalizada");
+    } catch (err: any) {
+      const errorMessage = err?.message || "Erro ao sincronizar";
+      setError(errorMessage);
+      console.error("❌ Erro ao sincronizar:", err);
+      throw err; // Re-throw para o componente lidar com toast
     } finally {
       setIsSyncing(false);
     }
-  };
+  }, []);
+
+  /**
+   * Sincroniza automaticamente quando online
+   */
+  useEffect(() => {
+    if (isOnline && stats.pending > 0 && !isSyncing) {
+      // Aguarda um pouco antes de sincronizar automaticamente
+      const timer = setTimeout(() => {
+        sync();
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isOnline, stats.pending, isSyncing, sync]);
 
   // Configurar listeners de conexão
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
       updateStats();
+
+      // Auto-sync após reconexão
+      setTimeout(async () => {
+        const currentStats = await getSyncQueueStats();
+        if (currentStats.pending > 0) {
+          console.log("🔄 Reconectado - iniciando sincronização automática");
+          sync();
+        }
+      }, 2000);
     };
 
     const handleOffline = () => {
@@ -86,7 +150,7 @@ export function useOfflineSync(): UseOfflineSyncReturn {
         window.removeEventListener("offline", handleOffline);
       };
     }
-  }, []);
+  }, [sync]);
 
   // Configurar sincronização automática
   useEffect(() => {
@@ -106,5 +170,7 @@ export function useOfflineSync(): UseOfflineSyncReturn {
     isSyncing,
     stats,
     sync,
+    lastSyncTime,
+    error,
   };
 }

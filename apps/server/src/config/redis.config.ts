@@ -17,7 +17,7 @@ export function getRedisClient(): Redis | null {
 
   try {
     redis = new Redis(env.REDIS_URL, {
-      maxRetriesPerRequest: 3,
+      maxRetriesPerRequest: null, // BullMQ requires this to be null
       retryStrategy(times) {
         const delay = Math.min(times * 50, 2000);
         return delay;

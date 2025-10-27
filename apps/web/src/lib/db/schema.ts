@@ -168,6 +168,24 @@ export interface SyncMetadata {
 }
 
 /**
+ * Interface para arquivos marcados para upload
+ * Armazena apenas metadados - não armazena o arquivo em si
+ */
+export interface FileMarker {
+  id: string;
+  matriculaId: string;
+  documentoId: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  localPath?: string; // Para futuro uso
+  status: "pending" | "uploading" | "completed" | "failed";
+  markedAt: Date;
+  uploadedAt?: Date;
+  error?: string;
+}
+
+/**
  * Banco de dados IndexedDB com Dexie
  */
 export class MatriFacilDB extends Dexie {
@@ -181,6 +199,7 @@ export class MatriFacilDB extends Dexie {
   matriculas!: Table<CachedMatricula, string>;
   documentos!: Table<CachedDocumento, string>;
   pendencias!: Table<CachedPendencia, string>;
+  fileMarkers!: Table<FileMarker, string>;
 
   constructor() {
     super("MatriFacilDB");
@@ -207,6 +226,24 @@ export class MatriFacilDB extends Dexie {
       documentos: "id, matriculaId, tipo, status, sync_status, updatedAt",
       pendencias:
         "id, matriculaId, documentoId, resolvido, sync_status, updatedAt",
+    });
+
+    this.version(3).stores({
+      users: "id, email, updatedAt",
+      sessions: "id, userId, expiresAt",
+      syncQueue: "++id, synced, timestamp",
+      syncMetadata: "key, updatedAt",
+      alunos:
+        "id, idGlobal, nome, dataNascimento, etapa, status, sync_status, updatedAt",
+      responsaveis: "id, idGlobal, cpf, nome, sync_status, updatedAt",
+      turmas:
+        "id, idGlobal, etapa, turno, anoLetivo, ativa, sync_status, updatedAt",
+      matriculas:
+        "id, idGlobal, protocoloLocal, alunoId, responsavelId, turmaId, status, sync_status, updatedAt",
+      documentos: "id, matriculaId, tipo, status, sync_status, updatedAt",
+      pendencias:
+        "id, matriculaId, documentoId, resolvido, sync_status, updatedAt",
+      fileMarkers: "id, matriculaId, documentoId, status, markedAt",
     });
   }
 }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -23,6 +23,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Save, Loader2, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { isOnline } from "@/lib/utils/network";
+import { savePreMatriculaOffline } from "@/lib/services/pre-matricula-offline.service";
 
 const preMatriculaSchema = z.object({
   aluno: z.object({
@@ -85,6 +87,7 @@ type PreMatriculaFormData = z.infer<typeof preMatriculaSchema>;
 export default function NovaPreMatriculaPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
     register,
@@ -110,47 +113,66 @@ export default function NovaPreMatriculaPage() {
     },
   });
 
-  const createPreMatriculaMutation = useMutation({
-    mutationFn: async (data: PreMatriculaFormData) => {
-      try {
-        const result = await apiClient.post("/api/pre-matriculas", {
-          aluno: {
-            nome: data.aluno.nome,
-            dataNascimento: new Date(data.aluno.dataNascimento),
-            etapa: data.aluno.etapa,
-            necessidadesEspeciais: data.aluno.necessidadesEspeciais,
-            observacoes: data.aluno.observacoes,
-          },
-          responsavel: {
-            nome: data.responsavel.nome,
-            cpf: data.responsavel.cpf,
-            telefone: data.responsavel.telefone,
-            endereco: data.responsavel.endereco,
-            bairro: data.responsavel.bairro,
-            email: data.responsavel.email,
-            parentesco: data.responsavel.parentesco,
-            autorizadoRetirada: data.responsavel.autorizadoRetirada,
-          },
+  const onSubmit = async (data: PreMatriculaFormData) => {
+    if (isSubmitting) return;
+
+    console.log("🎯 ON SUBMIT CHAMADO");
+    setIsSubmitting(true);
+
+    try {
+      const online = isOnline();
+      console.log(
+        "📡 Status da conexão no onSubmit:",
+        online ? "Online" : "Offline"
+      );
+
+      if (!online) {
+        console.log("📱 Salvando offline...");
+        const result = await savePreMatriculaOffline({
+          aluno: data.aluno,
+          responsavel: data.responsavel,
           observacoes: data.observacoes,
         });
-        return result;
-      } catch (error: any) {
-        throw new Error(error?.message || "Erro ao criar pré-matrícula");
+        console.log("✅ Salvo no IndexedDB com sucesso", result);
+        toast.success(
+          `Pré-matrícula salva localmente! Protocolo: ${result.protocoloLocal}. Será sincronizada quando houver conexão.`,
+          { duration: 5000 }
+        );
+        router.push("/dashboard/pre-matriculas");
+        return;
       }
-    },
-    onSuccess: () => {
+
+      // Se online, tentar servidor
+      const result = await apiClient.post("/api/pre-matriculas", {
+        aluno: {
+          nome: data.aluno.nome,
+          dataNascimento: new Date(data.aluno.dataNascimento),
+          etapa: data.aluno.etapa,
+          necessidadesEspeciais: data.aluno.necessidadesEspeciais,
+          observacoes: data.aluno.observacoes,
+        },
+        responsavel: {
+          nome: data.responsavel.nome,
+          cpf: data.responsavel.cpf,
+          telefone: data.responsavel.telefone,
+          endereco: data.responsavel.endereco,
+          bairro: data.responsavel.bairro,
+          email: data.responsavel.email,
+          parentesco: data.responsavel.parentesco,
+          autorizadoRetirada: data.responsavel.autorizadoRetirada,
+        },
+        observacoes: data.observacoes,
+      });
       toast.success("Pré-matrícula criada com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["pre-matriculas"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       router.push("/dashboard/pre-matriculas");
-    },
-    onError: (error: Error) => {
+    } catch (error: any) {
+      console.error("❌ Erro ao processar:", error);
       toast.error(error.message);
-    },
-  });
-
-  const onSubmit = (data: PreMatriculaFormData) => {
-    createPreMatriculaMutation.mutate(data);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Função para preencher o formulário automaticamente (apenas em desenvolvimento)
@@ -973,8 +995,8 @@ export default function NovaPreMatriculaPage() {
           <Button type="button" variant="outline" asChild>
             <Link href="/dashboard/pre-matriculas">Cancelar</Link>
           </Button>
-          <Button type="submit" disabled={createPreMatriculaMutation.isPending}>
-            {createPreMatriculaMutation.isPending ? (
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Salvando...

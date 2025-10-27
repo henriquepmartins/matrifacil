@@ -10,4 +10,5 @@ export type {
   CachedMatricula,
   CachedDocumento,
   CachedPendencia,
+  FileMarker,
 } from "./schema";

@@ -1,5 +1,5 @@
-import { db } from "../db/index.js";
-import type { CachedDocumento } from "../db/index.js";
+import { db } from "../db/index";
+import type { CachedDocumento } from "../db/index";
 
 export interface UploadItem {
   documentId: string;

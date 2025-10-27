@@ -1,5 +1,5 @@
-import { db } from "../db/index.js";
-import type { BatchItem } from "./batch-builder.js";
+import { db } from "../db/index";
+import type { BatchItem } from "./batch-builder";
 
 export interface SyncMapping {
   entity: string;

@@ -1,4 +1,4 @@
-import { db } from "../db/index.js";
+import { db } from "../db/index";
 import type {
   CachedResponsavel,
   CachedAluno,
@@ -6,7 +6,7 @@ import type {
   CachedMatricula,
   CachedDocumento,
   CachedPendencia,
-} from "../db/index.js";
+} from "../db/index";
 
 export interface BatchItem {
   entity: string;

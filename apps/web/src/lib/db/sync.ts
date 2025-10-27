@@ -1,7 +1,7 @@
 import { db, type SyncQueueItem } from "./index";
-import { buildSyncBatch } from "../sync/batch-builder.js";
-import { reconcileData } from "../sync/reconciliation.js";
-import type { SyncMapping } from "../sync/reconciliation.js";
+import { buildSyncBatch } from "../sync/batch-builder";
+import { reconcileData } from "../sync/reconciliation";
+import type { SyncMapping } from "../sync/reconciliation";
 
 const MAX_RETRIES = 3;
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -33,6 +33,7 @@ export function isOnline(): boolean {
 
 /**
  * Sincroniza operações pendentes com o servidor usando batch
+ * Salva os dados no banco de dados (IndexedDB) e depois sincroniza com Supabase
  */
 export async function syncPendingOperations(): Promise<{
   success: number;
@@ -46,7 +47,7 @@ export async function syncPendingOperations(): Promise<{
   try {
     console.log("🔄 Preparando lote de sincronização...");
 
-    // Construir lote de sincronização
+    // Construir lote de sincronização (coleta dados pendentes do IndexedDB)
     const batch = await buildSyncBatch();
 
     if (batch.length === 0) {
@@ -56,22 +57,44 @@ export async function syncPendingOperations(): Promise<{
 
     console.log(`📦 Lote preparado com ${batch.length} itens`);
 
-    // Enviar lote para o servidor
+    // Verificar autenticação antes de enviar
+    const token = await getAuthToken();
+    if (!token) {
+      console.error("❌ Usuário não autenticado");
+      return { success: 0, failed: batch.length };
+    }
+
+    // Enviar lote para o servidor (salva no Supabase)
     const result = await sendBatch(batch);
+
+    console.log(
+      `📥 Servidor respondeu: ${result.mappings.length} sucessos, ${result.conflicts.length} conflitos`
+    );
 
     if (result.success && result.mappings.length > 0) {
       // Reconciliar dados locais com IDs globais
+      // Atualiza o IndexedDB com os IDs globais recebidos
       await reconcileData(result.mappings);
-      console.log(`✅ ${result.mappings.length} registros reconciliados`);
+      console.log(
+        `✅ ${result.mappings.length} registros reconciliados e salvos no IndexedDB`
+      );
     }
+
+    // Log de resultado final
+    console.log(
+      `🎉 Sincronização completa: ${result.mappings.length} salvos, ${result.conflicts.length} falhas`
+    );
 
     return {
       success: result.mappings.length,
       failed: result.conflicts.length,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("❌ Erro na sincronização:", error);
-    return { success: 0, failed: 1 };
+    console.error("Detalhes do erro:", error.message, error.stack);
+    throw new Error(
+      `Erro ao sincronizar: ${error.message || "Erro desconhecido"}`
+    );
   }
 }
 

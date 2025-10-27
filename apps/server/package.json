@@ -5,7 +5,8 @@
   "scripts": {
     "build": "esbuild src/index.ts --bundle --format=esm --outfile=dist/index.js --platform=node --target=node18 --external:pg --external:drizzle-orm --external:dotenv --external:zod --external:bcrypt --external:cookie-parser --external:cors --external:express --external:jsonwebtoken --external:pdfkit --external:uuid --external:@scalar/api-reference --external:@scalar/express-api-reference --external:csv-stringify --external:ioredis --external:bullmq --external:@supabase/supabase-js --external:multer",
     "dev": "tsx watch src/index.ts",
-    "start": "node api/index.js"
+    "start": "node api/index.js",
+    "test:redis": "tsx scripts/test-redis-simple.ts"
   },
   "dependencies": {
     "@matrifacil-/db": "workspace:*",
