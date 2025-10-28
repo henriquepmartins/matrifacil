@@ -130,7 +130,7 @@ export default function ConfiguracoesPage() {
             Banco de Dados Local
           </CardTitle>
           <CardDescription>
-            Gerencie o cache local (IndexedDB) do aplicativo
+            Gerencie o cache local do aplicativo
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -195,36 +195,6 @@ export default function ConfiguracoesPage() {
                   <>
                     <Trash2 className="h-4 w-4 mr-2" />
                     Limpar Cache
-                  </>
-                )}
-              </Button>
-            </div>
-
-            <div className="border border-destructive/50 rounded-lg p-4 space-y-2 bg-destructive/5">
-              <h3 className="font-semibold flex items-center gap-2 text-destructive">
-                <AlertTriangle className="h-4 w-4" />
-                Deletar Banco de Dados
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                <span className="font-semibold text-destructive">ATENÇÃO:</span>{" "}
-                Remove completamente o banco IndexedDB e recarrega a página. Use
-                apenas em caso de problemas graves.
-              </p>
-              <Button
-                onClick={handleDeleteDatabase}
-                disabled={isClearing || isDeleting}
-                variant="destructive"
-                className="w-full"
-              >
-                {isDeleting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-destructive-foreground mr-2"></div>
-                    Deletando...
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Deletar Banco de Dados
                   </>
                 )}
               </Button>

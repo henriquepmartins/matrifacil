@@ -26,6 +26,7 @@ import {
 
 type MatriculaRow = {
   id: string;
+  idGlobal?: string; // ID global do servidor
   protocolo: string;
   aluno: string;
   responsavel: string;
@@ -152,6 +153,7 @@ export default function MatriculasPage() {
 
       return localData.map((item: any) => ({
         id: item.id,
+        idGlobal: item.idGlobal, // Incluir ID global
         protocolo: item.protocoloLocal,
         aluno: item.aluno?.nome || "Sem nome",
         responsavel: item.responsavel?.nome || "Sem nome",

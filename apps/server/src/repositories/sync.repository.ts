@@ -150,7 +150,9 @@ export class SyncRepository {
               }
 
               // Gerar protocolo definitivo
-              const protocolo = this.generateProtocolo();
+              const protocolo = this.generateProtocolo(
+                item.data.aluno?.etapa || "bercario"
+              );
 
               // Remover campos que o servidor calcula para evitar override
               const {
@@ -304,13 +306,18 @@ export class SyncRepository {
     return crypto.randomUUID();
   }
 
-  private generateProtocolo(): string {
+  private generateProtocolo(etapa: string): string {
     const ano = new Date().getFullYear();
-    const timestamp = Date.now();
-    const random = Math.floor(Math.random() * 1000)
-      .toString()
-      .padStart(3, "0");
-    return `MAT-${ano}-${timestamp}-${random}`;
+    // Usar o novo formato: ETAPA - ANO - ID
+    const etapaFormatada = etapa
+      .toUpperCase()
+      .replace(/[ÁÀÂÃÄ]/g, "A")
+      .replace(/[ÉÈÊË]/g, "E")
+      .replace(/[ÍÌÎÏ]/g, "I")
+      .replace(/[ÓÒÔÕÖ]/g, "O")
+      .replace(/[ÚÙÛÜ]/g, "U")
+      .replace(/[Ç]/g, "C");
+    return `${etapaFormatada} - ${ano} - 001`;
   }
 }
 

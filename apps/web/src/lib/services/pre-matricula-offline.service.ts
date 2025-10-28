@@ -1,4 +1,5 @@
 import { db } from "../db";
+import { ProtocoloGenerator } from "@/lib/utils/protocol-generator";
 
 export interface PreMatriculaData {
   aluno: {
@@ -31,7 +32,7 @@ export async function savePreMatriculaOffline(data: PreMatriculaData) {
   const matriculaId = crypto.randomUUID();
 
   const now = new Date();
-  const protocoloLocal = `LOCAL-${Date.now()}`;
+  const protocoloLocal = ProtocoloGenerator.generate(data.aluno.etapa);
 
   console.log("💾 Salvando pré-matrícula offline...", {
     alunoId,
