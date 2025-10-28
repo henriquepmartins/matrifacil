@@ -1,12 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import {
-  syncPendingOperations,
-  getSyncQueueStats,
-  setupAutoSync,
-  isOnline as checkOnline,
-} from "../db/sync";
+import { getSyncQueueStats, isOnline as checkOnline } from "../db/sync";
+import { syncManager, type SyncSource } from "../sync/sync-manager";
 
 interface SyncStats {
   total: number;
@@ -19,7 +15,7 @@ interface UseOfflineSyncReturn {
   isOnline: boolean;
   isSyncing: boolean;
   stats: SyncStats;
-  sync: () => Promise<void>;
+  sync: () => Promise<{ success: number; failed: number }>;
   lastSyncTime: Date | null;
   error: string | null;
 }
@@ -50,31 +46,18 @@ export function useOfflineSync(): UseOfflineSyncReturn {
   /**
    * Sincroniza operações pendentes manualmente
    */
-  const sync = useCallback(async () => {
+  const sync = useCallback(async (source: SyncSource = "manual") => {
     if (!checkOnline()) {
       console.log("📡 Offline - não é possível sincronizar agora");
       setError("Não há conexão com a internet");
-      return;
+      return { success: 0, failed: 0 };
     }
 
     setIsSyncing(true);
     setError(null);
 
     try {
-      console.log("🔄 Iniciando sincronização...");
-
-      // Esta função faz TUDO:
-      // 1. Coleta dados pendentes do IndexedDB
-      // 2. Envia para o servidor (POST /api/sync)
-      // 3. Servidor salva no Supabase
-      // 4. Recebe IDs globais do servidor
-      // 5. Atualiza o IndexedDB com os IDs globais
-      // 6. Marca registros como "synced"
-      const result = await syncPendingOperations();
-
-      console.log(
-        `📊 Resultado: ${result.success} sucessos, ${result.failed} falhas`
-      );
+      const result = await syncManager.sync(source);
 
       if (result.success > 0) {
         setLastSyncTime(new Date());
@@ -86,56 +69,36 @@ export function useOfflineSync(): UseOfflineSyncReturn {
       if (result.failed > 0) {
         setError(`${result.failed} operação(ões) falharam na sincronização`);
       } else if (result.success > 0) {
-        // Sucesso - limpar erro se existir
         setError(null);
       }
 
       // Atualizar estatísticas após sincronização
       await updateStats();
 
-      console.log("✅ Sincronização finalizada");
+      return result;
     } catch (err: any) {
       const errorMessage = err?.message || "Erro ao sincronizar";
       setError(errorMessage);
       console.error("❌ Erro ao sincronizar:", err);
-      throw err; // Re-throw para o componente lidar com toast
+      throw err;
     } finally {
       setIsSyncing(false);
     }
   }, []);
 
-  /**
-   * Sincroniza automaticamente quando online
-   */
-  useEffect(() => {
-    if (isOnline && stats.pending > 0 && !isSyncing) {
-      // Aguarda um pouco antes de sincronizar automaticamente
-      const timer = setTimeout(() => {
-        sync();
-      }, 2000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [isOnline, stats.pending, isSyncing, sync]);
+  // Auto-sync é gerenciado pelo SyncManager agora
 
   // Configurar listeners de conexão
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
       updateStats();
-
-      // Auto-sync após reconexão
-      setTimeout(async () => {
-        const currentStats = await getSyncQueueStats();
-        if (currentStats.pending > 0) {
-          console.log("🔄 Reconectado - iniciando sincronização automática");
-          sync();
-        }
-      }, 2000);
+      console.log("🌐 Reconectado - auto-sync detectará pendências");
     };
 
     const handleOffline = () => {
       setIsOnline(false);
+      console.log("📡 Desconectado");
     };
 
     // Estado inicial
@@ -150,13 +113,25 @@ export function useOfflineSync(): UseOfflineSyncReturn {
         window.removeEventListener("offline", handleOffline);
       };
     }
-  }, [sync]);
+  }, []);
 
-  // Configurar sincronização automática
+  // Configurar SyncManager
   useEffect(() => {
     updateStats();
-    const cleanup = setupAutoSync();
-    return cleanup;
+
+    // Habilitar auto-sync
+    syncManager.enableAutoSync(30000);
+
+    // Listener para atualizar stats quando sync completa
+    const handleSyncComplete = () => {
+      updateStats();
+    };
+
+    syncManager.on(handleSyncComplete);
+
+    return () => {
+      syncManager.off(handleSyncComplete);
+    };
   }, []);
 
   // Atualizar estatísticas periodicamente

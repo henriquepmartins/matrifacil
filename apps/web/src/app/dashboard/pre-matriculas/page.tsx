@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import DataTable from "@/components/data-table";
-import StatusBadge from "@/components/status-badge";
+import StatusBadge, { SyncStatusIndicator } from "@/components/status-badge";
 import PreMatriculaEditDialog from "@/components/pre-matricula-edit-dialog";
 import { Plus, Eye, Edit, FileText, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -22,35 +22,35 @@ import { apiClient } from "@/lib/api-client";
 import { isOnline } from "@/lib/utils/network";
 import {
   cachePreMatriculasFromServer,
-  getPreMatriculasFromCache,
+  getAllPreMatriculas,
 } from "@/lib/services/pre-matricula-cache.service";
 
 interface PreMatricula {
   id: string;
   protocoloLocal: string;
   status: "pre" | "pendente_doc" | "completo" | "concluido";
-  dataMatricula: string | null;
-  observacoes: string | null;
-  createdAt: string;
-  updatedAt: string;
-  aluno: {
-    id: string;
+  dataMatricula?: string | null;
+  observacoes?: string | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  aluno?: {
+    id?: string;
     nome: string;
-    dataNascimento: string;
+    dataNascimento?: string;
     etapa: string;
-    necessidadesEspeciais: boolean;
-    observacoes: string | null;
+    necessidadesEspeciais?: boolean;
+    observacoes?: string | null;
   };
-  responsavel: {
-    id: string;
+  responsavel?: {
+    id?: string;
     nome: string;
-    cpf: string;
-    telefone: string;
-    endereco: string;
-    bairro: string;
-    email: string | null;
-    parentesco: string;
-    autorizadoRetirada: boolean;
+    cpf?: string;
+    telefone?: string;
+    endereco?: string;
+    bairro?: string;
+    email?: string | null;
+    parentesco?: string;
+    autorizadoRetirada?: boolean;
   };
   turma?: {
     id: string;
@@ -58,6 +58,7 @@ interface PreMatricula {
     etapa: string;
     turno: string;
   } | null;
+  sync_status?: "pending" | "synced" | "conflict";
 }
 
 type PreMatriculaRow = PreMatricula & { alunoNome: string };
@@ -69,6 +70,27 @@ export default function PreMatriculasPage() {
   const [editingPreMatricula, setEditingPreMatricula] =
     useState<PreMatricula | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  // Sincronização automática quando online (DESABILITADA TEMPORARIAMENTE)
+  // useEffect(() => {
+  //   const interval = setInterval(async () => {
+  //     if (isOnline()) {
+  //       try {
+  //         const result = await syncPendingOperations();
+  //         if (result.success > 0) {
+  //           toast.success(
+  //             `${result.success} item(s) sincronizado(s) com sucesso!`
+  //           );
+  //           queryClient.invalidateQueries({ queryKey: ["pre-matriculas"] });
+  //         }
+  //       } catch (error) {
+  //         console.error("Erro na sincronização automática:", error);
+  //       }
+  //     }
+  //   }, 30000); // A cada 30 segundos
+
+  //   return () => clearInterval(interval);
+  // }, [queryClient]);
 
   const {
     data: allPreMatriculas,
@@ -83,34 +105,30 @@ export default function PreMatriculasPage() {
         // Tentar buscar do servidor se online
         if (isOnline()) {
           console.log("🌐 Online - buscando do servidor e cacheando");
-          const serverData = await cachePreMatriculasFromServer();
-          return serverData;
+          await cachePreMatriculasFromServer();
         }
       } catch (error) {
-        console.warn("⚠️ Erro ao buscar do servidor, usando cache", error);
+        console.warn("⚠️ Erro ao buscar do servidor:", error);
       }
 
-      // Offline ou erro - buscar do cache
-      console.log("📴 Offline ou erro - usando cache local");
-      const cachedData = await getPreMatriculasFromCache();
-      return cachedData;
+      // Sempre retornar todos os dados locais (synced + pending)
+      console.log("📂 Buscando dados locais...");
+      return getAllPreMatriculas();
     },
   });
 
-  const preMatriculas = allPreMatriculas?.filter((item: PreMatricula) => {
+  const preMatriculas = allPreMatriculas?.filter((item) => {
     const statusMatch =
       filtroStatus === "todos" || item.status === filtroStatus;
     const etapaMatch =
-      filtroEtapa === "todos" || item.aluno.etapa === filtroEtapa;
+      filtroEtapa === "todos" || item.aluno?.etapa === filtroEtapa;
     return statusMatch && etapaMatch;
   });
 
-  const tableData: PreMatriculaRow[] = (preMatriculas || []).map(
-    (item: PreMatricula) => ({
-      ...item,
-      alunoNome: item.aluno.nome,
-    })
-  );
+  const tableData = (preMatriculas || []).map((item) => ({
+    ...item,
+    alunoNome: item.aluno?.nome || "",
+  }));
 
   const deletePreMatriculaMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -155,7 +173,10 @@ export default function PreMatriculasPage() {
       key: "status" as const,
       label: "Status",
       render: (value: any, item: PreMatricula) => (
-        <StatusBadge status={item.status as any} />
+        <div className="flex items-center">
+          <StatusBadge status={item.status as any} />
+          <SyncStatusIndicator syncStatus={item.sync_status} />
+        </div>
       ),
     },
     {
@@ -264,7 +285,7 @@ export default function PreMatriculasPage() {
       <PreMatriculaEditDialog
         open={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
-        preMatricula={editingPreMatricula}
+        preMatricula={editingPreMatricula as any}
       />
     </div>
   );

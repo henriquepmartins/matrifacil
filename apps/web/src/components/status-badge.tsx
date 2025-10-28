@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { Clock } from "lucide-react";
 
 type StatusType = "pre" | "pendente_doc" | "completo" | "concluido";
 
@@ -41,6 +42,23 @@ export default function StatusBadge({ status, className }: StatusBadgeProps) {
   return (
     <Badge variant={config.variant} className={cn(config.className, className)}>
       {config.label}
+    </Badge>
+  );
+}
+
+/**
+ * Indicador de sincronização pendente
+ */
+export function SyncStatusIndicator({ syncStatus }: { syncStatus?: string }) {
+  if (syncStatus !== "pending") return null;
+
+  return (
+    <Badge
+      variant="outline"
+      className="ml-2 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
+    >
+      <Clock className="h-3 w-3 mr-1" />
+      Aguardando Sinc.
     </Badge>
   );
 }

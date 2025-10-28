@@ -39,7 +39,7 @@ export async function addToUploadQueue(item: UploadItem): Promise<void> {
 
   // Criar entrada na fila de upload
   await db.syncQueue.add({
-    action: "UPLOAD",
+    action: "UPLOAD" as any,
     table: "documento",
     data: {
       documentId: item.documentId,
@@ -69,7 +69,8 @@ export async function processUploadQueue(): Promise<{
   // Buscar itens de upload pendentes
   const allItems = await db.syncQueue.toArray();
   const uploadItems = allItems.filter(
-    (item) => item.action === "UPLOAD" && !item.synced && item.retries < 3
+    (item) =>
+      (item.action as any) === "UPLOAD" && !item.synced && item.retries < 3
   );
 
   if (uploadItems.length === 0) {
@@ -196,7 +197,9 @@ export async function cleanupUploadQueue(daysOld = 7): Promise<number> {
   const allItems = await db.syncQueue.toArray();
   const oldItems = allItems.filter(
     (item) =>
-      item.synced && item.timestamp < cutoffDate && item.action === "UPLOAD"
+      item.synced &&
+      item.timestamp < cutoffDate &&
+      (item.action as any) === "UPLOAD"
   );
 
   if (oldItems.length > 0) {

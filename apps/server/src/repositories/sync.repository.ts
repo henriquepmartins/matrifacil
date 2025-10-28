@@ -61,12 +61,16 @@ export class SyncRepository {
         switch (item.entity) {
           case "responsavel":
             if (item.operation === "create") {
+              const now = new Date();
+              const payload = {
+                id: this.generateId(),
+                ...item.data,
+                createdAt: now,
+                updatedAt: now,
+              } as any;
               const [created] = await db
                 .insert(responsavel)
-                .values({
-                  id: this.generateId(),
-                  ...item.data,
-                })
+                .values(payload)
                 .returning({ id: responsavel.id });
               id_global = created.id;
             }
@@ -74,12 +78,20 @@ export class SyncRepository {
 
           case "aluno":
             if (item.operation === "create") {
+              const now = new Date();
+              const payload = {
+                id: this.generateId(),
+                ...item.data,
+                // Normalizar possíveis strings de data
+                dataNascimento: item.data?.dataNascimento
+                  ? new Date(item.data.dataNascimento)
+                  : null,
+                createdAt: now,
+                updatedAt: now,
+              } as any;
               const [created] = await db
                 .insert(aluno)
-                .values({
-                  id: this.generateId(),
-                  ...item.data,
-                })
+                .values(payload)
                 .returning({ id: aluno.id });
               id_global = created.id;
             }
@@ -140,6 +152,18 @@ export class SyncRepository {
               // Gerar protocolo definitivo
               const protocolo = this.generateProtocolo();
 
+              // Remover campos que o servidor calcula para evitar override
+              const {
+                alunoId: _,
+                responsavelId: __,
+                turmaId: ___,
+                status: ____status,
+                protocoloLocal: ____protocolo,
+                createdAt: ____c,
+                updatedAt: ____u,
+                ...restOfData
+              } = item.data;
+
               const [created] = await db
                 .insert(matricula)
                 .values({
@@ -147,8 +171,10 @@ export class SyncRepository {
                   alunoId: id_aluno_global,
                   responsavelId: id_responsavel_global,
                   turmaId: id_turma_global,
+                  ...restOfData,
                   protocoloLocal: protocolo,
-                  ...item.data,
+                  // Respeitar status possivelmente ajustado pela lógica de vagas acima
+                  status: restOfData.status ?? "completo",
                 })
                 .returning({ id: matricula.id });
               id_global = created.id;

@@ -154,8 +154,17 @@ function sanitizeData(item: any): any {
     operation,
     last_modified,
     synced_at,
+    createdAt,
+    updatedAt,
     ...sanitized
   } = item;
 
+  // Normalizar campos de data conhecidos se existirem
+  if (sanitized.dataNascimento) {
+    const v = sanitized.dataNascimento;
+    sanitized.dataNascimento = v instanceof Date ? v : new Date(v);
+  }
+
+  // Evitar enviar timestamps gerenciados pelo servidor
   return sanitized;
 }

@@ -65,7 +65,7 @@ export default function NovaMatriculaPage() {
       if (searchPre) params.set("search", searchPre);
       try {
         const result = await apiClient.get(`/api/pre-matriculas?${params}`);
-        return (result.data || []) as PreResumo[];
+        return ((result as any).data || []) as PreResumo[];
       } catch (error) {
         console.error("Erro ao buscar pré-matrículas:", error);
         return [];
@@ -93,7 +93,7 @@ export default function NovaMatriculaPage() {
       params.set("limit", "20");
       try {
         const result = await apiClient.get(`/api/turmas?${params}`);
-        return (result.data || []) as TurmaResumo[];
+        return ((result as any).data || []) as TurmaResumo[];
       } catch (error) {
         console.error("Erro ao buscar turmas:", error);
         return [];
@@ -129,7 +129,10 @@ export default function NovaMatriculaPage() {
       console.log("📦 Payload:", payload);
 
       try {
-        const result = await apiClient.post(`/api/pre-matriculas/${selectedPreId}/converter`, payload);
+        const result = await apiClient.post(
+          `/api/pre-matriculas/${selectedPreId}/converter`,
+          payload
+        );
         console.log("✅ Matrícula criada:", result);
         return result;
       } catch (error: any) {

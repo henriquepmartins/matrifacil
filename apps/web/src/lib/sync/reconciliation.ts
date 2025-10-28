@@ -62,11 +62,21 @@ export async function reconcileData(mappings: SyncMapping[]): Promise<void> {
         }
 
         // Atualizar com ID global e marcar como sincronizado
-        await store.update(id_local, {
-          idGlobal: id_global,
-          sync_status: "synced",
-          synced_at: Date.now(),
-        } as any);
+        // Para matrículas, também atualizar status para "completo"
+        if (entity === "matricula") {
+          await store.update(id_local, {
+            idGlobal: id_global,
+            sync_status: "synced",
+            synced_at: Date.now(),
+            status: "completo", // Converter para matrícula completa
+          } as any);
+        } else {
+          await store.update(id_local, {
+            idGlobal: id_global,
+            sync_status: "synced",
+            synced_at: Date.now(),
+          } as any);
+        }
 
         console.log(`✅ Reconciliado ${entity} ${id_local} → ${id_global}`);
       }

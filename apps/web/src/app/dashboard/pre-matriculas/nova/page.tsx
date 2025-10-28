@@ -129,8 +129,15 @@ export default function NovaPreMatriculaPage() {
       if (!online) {
         console.log("📱 Salvando offline...");
         const result = await savePreMatriculaOffline({
-          aluno: data.aluno,
-          responsavel: data.responsavel,
+          aluno: {
+            ...data.aluno,
+            necessidadesEspeciais: data.aluno.necessidadesEspeciais ?? false,
+          },
+          responsavel: {
+            ...data.responsavel,
+            parentesco: data.responsavel.parentesco || "Pai/Mãe",
+            autorizadoRetirada: data.responsavel.autorizadoRetirada ?? true,
+          },
           observacoes: data.observacoes,
         });
         console.log("✅ Salvo no IndexedDB com sucesso", result);
@@ -138,6 +145,8 @@ export default function NovaPreMatriculaPage() {
           `Pré-matrícula salva localmente! Protocolo: ${result.protocoloLocal}. Será sincronizada quando houver conexão.`,
           { duration: 5000 }
         );
+        // Invalidar query para atualizar tabela
+        queryClient.invalidateQueries({ queryKey: ["pre-matriculas"] });
         router.push("/dashboard/pre-matriculas");
         return;
       }

@@ -84,7 +84,20 @@ export class SyncService {
 
       console.error(`❌ Erro na sincronização ${batchId}:`, error);
 
-      throw error;
+      // Em vez de propagar 500, responder com conflicts estruturados para o cliente lidar
+      const conflicts = (payload.batch || []).map((item) => ({
+        entity: item.entity,
+        id_local: item.id_local,
+        error: error?.message || "Erro interno do servidor",
+      }));
+
+      return {
+        success: false,
+        batchId,
+        mappings: [],
+        conflicts,
+        synced_at: Date.now(),
+      };
     }
   }
 

@@ -5,11 +5,13 @@ import { useSyncStatus } from "@/lib/hooks/useSyncStatus";
 import { Button } from "@/components/ui/button";
 import { WifiOff, Wifi, Upload, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function SyncStatusBanner() {
   const { isOnline, isSyncing, stats, sync, lastSyncTime, error } =
     useOfflineSync();
   const { status } = useSyncStatus();
+  const queryClient = useQueryClient();
 
   const handleManualSync = async () => {
     try {
@@ -19,13 +21,17 @@ export function SyncStatusBanner() {
 
       const result = await sync();
 
-      if (result && result.success > 0) {
+      if (result?.success > 0) {
         toast.success(
-          `${result.success} registro(s) sincronizado(s) e salvo(s) no banco! 🎉`,
+          `${result.success} item(s) sincronizado(s) e convertido(s) para matrícula completa! 🎉`,
           {
             duration: 4000,
           }
         );
+
+        // Invalidar queries para atualizar UI
+        queryClient.invalidateQueries({ queryKey: ["pre-matriculas"] });
+        queryClient.invalidateQueries({ queryKey: ["matriculas"] });
       } else if (stats.pending === 0) {
         toast.success("Todos os dados já estão sincronizados!", {
           duration: 3000,

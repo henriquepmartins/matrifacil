@@ -8,7 +8,7 @@ export async function cachePreMatriculasFromServer() {
   try {
     console.log("🌐 Buscando pré-matrículas do servidor para cache...");
     const result = await apiClient.get("/api/pre-matriculas");
-    const preMatriculas = result?.data || [];
+    const preMatriculas = (result as any)?.data || [];
 
     console.log(
       `📦 ${preMatriculas.length} pré-matrículas recebidas do servidor`
@@ -75,8 +75,11 @@ export async function cachePreMatriculasFromServer() {
     );
     return preMatriculas;
   } catch (error) {
-    console.error("❌ Erro ao cachear pré-matrículas:", error);
-    throw error;
+    console.warn(
+      "⚠️ Servidor offline ou erro de conexão, usando apenas cache local"
+    );
+    // Retornar dados do cache ao invés de lançar erro
+    return getPreMatriculasFromCache();
   }
 }
 
@@ -109,6 +112,48 @@ export async function getPreMatriculasFromCache() {
         updatedAt: m.updatedAt,
         aluno,
         responsavel,
+        sync_status: m.sync_status, // Adicionar sync_status
+      };
+    })
+  );
+
+  console.log(
+    `✅ Dados relacionados carregados para ${result.length} pré-matrículas`
+  );
+
+  return result;
+}
+
+/**
+ * Busca todas as pré-matrículas (synced + pending) do cache local
+ */
+export async function getAllPreMatriculas() {
+  console.log("📂 Buscando TODAS as pré-matrículas do cache local...");
+
+  // Buscar todas as matrículas com status "pre"
+  const matriculas = await db.matriculas
+    .where("status")
+    .equals("pre")
+    .toArray();
+
+  console.log(`📦 ${matriculas.length} pré-matrículas encontradas no cache`);
+
+  // Buscar dados relacionados e incluir sync_status
+  const result = await Promise.all(
+    matriculas.map(async (m) => {
+      const aluno = await db.alunos.get(m.alunoId);
+      const responsavel = await db.responsaveis.get(m.responsavelId);
+
+      return {
+        id: m.id || m.idGlobal,
+        protocoloLocal: m.protocoloLocal,
+        status: m.status,
+        observacoes: m.observacoes,
+        createdAt: m.createdAt,
+        updatedAt: m.updatedAt,
+        aluno,
+        responsavel,
+        sync_status: m.sync_status, // Adicionar sync_status
       };
     })
   );

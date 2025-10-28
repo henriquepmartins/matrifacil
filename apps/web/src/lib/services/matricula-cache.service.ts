@@ -8,7 +8,7 @@ export async function cacheMatriculasFromServer() {
   try {
     console.log("🌐 Buscando matrículas do servidor para cache...");
     const result = await apiClient.get("/api/matriculas");
-    const matriculas = result?.data || [];
+    const matriculas = (result as any)?.data || [];
 
     console.log(`📦 ${matriculas.length} matrículas recebidas do servidor`);
 

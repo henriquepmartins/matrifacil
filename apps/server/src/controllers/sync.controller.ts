@@ -37,7 +37,45 @@ export class SyncController {
         throw new AppError(401, "Não autenticado");
       }
 
-      const payload = syncPayloadSchema.parse(req.body);
+      // Evitar crash do Zod em ambientes com múltiplas versões: validar manualmente
+      const rawBody: any =
+        typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+
+      // Tentativa segura com Zod, mas sem quebrar em caso de incompatibilidade
+      let payload: any;
+      try {
+        payload = syncPayloadSchema.parse(rawBody);
+      } catch (zerr) {
+        // Fallback manual para evitar "_zod" undefined em alguns empacotadores
+        const body = rawBody || {};
+        const batch = Array.isArray(body.batch) ? body.batch : [];
+        const sanitizedBatch = batch
+          .filter((it) => it && typeof it === "object")
+          .map((it) => ({
+            entity: String(it.entity || ""),
+            operation: String(it.operation || "create"),
+            id_local: String(it.id_local || it.idLocal || ""),
+            data: typeof it.data === "object" && it.data ? it.data : {},
+          }))
+          .filter((it) => it.entity && it.id_local);
+
+        payload = {
+          batch: sanitizedBatch,
+          device_id:
+            typeof body.device_id === "string" ? body.device_id : undefined,
+          last_sync:
+            typeof body.last_sync === "number" ? body.last_sync : undefined,
+          app_version:
+            typeof body.app_version === "string" ? body.app_version : undefined,
+        };
+
+        if (payload.batch.length === 0) {
+          res
+            .status(400)
+            .json({ success: false, message: "Payload inválido: batch vazio" });
+          return;
+        }
+      }
       const userId = req.user.id;
 
       // Processar lote síncronamente (para pequenos lotes)

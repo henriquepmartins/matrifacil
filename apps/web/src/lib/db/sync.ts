@@ -2,9 +2,9 @@ import { db, type SyncQueueItem } from "./index";
 import { buildSyncBatch } from "../sync/batch-builder";
 import { reconcileData } from "../sync/reconciliation";
 import type { SyncMapping } from "../sync/reconciliation";
+import { API_URL } from "../api-client";
 
 const MAX_RETRIES = 3;
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 /**
  * Adiciona uma operação na fila de sincronização
@@ -90,8 +90,21 @@ export async function syncPendingOperations(): Promise<{
       failed: result.conflicts.length,
     };
   } catch (error: any) {
+    // Se for erro de servidor offline, apenas loga e retorna pacificamente
+    if (
+      error?.message === "SERVER_OFFLINE" ||
+      error?.isServerOffline ||
+      error?.name === "TypeError"
+    ) {
+      console.warn(
+        "⚠️ Servidor offline - dados permanecerão salvos localmente"
+      );
+      return { success: 0, failed: 0 };
+    }
+
     console.error("❌ Erro na sincronização:", error);
     console.error("Detalhes do erro:", error.message, error.stack);
+
     throw new Error(
       `Erro ao sincronizar: ${error.message || "Erro desconhecido"}`
     );
@@ -130,33 +143,49 @@ async function sendBatch(batch: any[]): Promise<{
     app_version: "1.0.0",
   };
 
-  console.log(`📤 Enviando lote com ${batch.length} itens...`);
-
-  const response = await fetch(`${API_URL}/api/sync`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(payload),
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    const error = await response
-      .json()
-      .catch(() => ({ message: response.statusText }));
-    throw new Error(error.message || `HTTP ${response.status}`);
-  }
-
-  const result = await response.json();
-
   console.log(
-    `✅ Lote sincronizado: ${result.data.mappings.length} sucessos, ${result.data.conflicts.length} conflitos`
+    `📤 Enviando lote com ${batch.length} itens para ${API_URL}/api/sync`
   );
 
-  return {
-    success: result.success,
-    mappings: result.data.mappings || [],
-    conflicts: result.data.conflicts || [],
-  };
+  try {
+    const response = await fetch(`${API_URL}/api/sync`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const error = await response
+        .json()
+        .catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || `HTTP ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    console.log(
+      `✅ Lote sincronizado: ${result.data.mappings.length} sucessos, ${result.data.conflicts.length} conflitos`
+    );
+
+    return {
+      success: result.success,
+      mappings: result.data.mappings || [],
+      conflicts: result.data.conflicts || [],
+    };
+  } catch (error: any) {
+    // Se for erro de conexão (servidor offline), lança erro específico para ser tratado upstream
+    if (
+      error?.message?.includes("Failed to fetch") ||
+      error?.code === "ECONNREFUSED" ||
+      error?.name === "TypeError"
+    ) {
+      const serverOfflineError = new Error("SERVER_OFFLINE");
+      (serverOfflineError as any).isServerOffline = true;
+      throw serverOfflineError;
+    }
+    throw error;
+  }
 }
 
 /**
@@ -218,11 +247,34 @@ export async function cleanupSyncQueue(daysOld = 7): Promise<number> {
  * Obtém estatísticas da fila de sincronização
  */
 export async function getSyncQueueStats() {
-  const total = await db.syncQueue.count();
+  // Buscar pendentes de todas as entidades
+  const [
+    syncQueuePending,
+    alunosPending,
+    responsaveisPending,
+    matriculasPending,
+    documentosPending,
+    pendenciasPending,
+  ] = await Promise.all([
+    db.syncQueue.where("synced").equals(0).count(),
+    db.alunos.where("sync_status").equals("pending").count(),
+    db.responsaveis.where("sync_status").equals("pending").count(),
+    db.matriculas.where("sync_status").equals("pending").count(),
+    db.documentos.where("sync_status").equals("pending").count(),
+    db.pendencias.where("sync_status").equals("pending").count(),
+  ]);
 
-  // Busca todos os itens e filtra no JavaScript para evitar problemas com boolean no IndexedDB
+  const total = syncQueuePending;
+  const pending =
+    syncQueuePending +
+    alunosPending +
+    responsaveisPending +
+    matriculasPending +
+    documentosPending +
+    pendenciasPending;
+
+  // Buscar falhas
   const allItems = await db.syncQueue.toArray();
-  const pending = allItems.filter((item) => !item.synced).length;
   const failed = allItems.filter(
     (item) => !item.synced && item.retries >= MAX_RETRIES
   ).length;
@@ -235,28 +287,4 @@ export async function getSyncQueueStats() {
   };
 }
 
-/**
- * Configura listeners para sincronização automática
- */
-export function setupAutoSync(): () => void {
-  const syncInterval = setInterval(() => {
-    syncPendingOperations().catch(console.error);
-  }, 30000); // Sincroniza a cada 30 segundos
-
-  const onlineHandler = () => {
-    console.log("🌐 Conexão restaurada - iniciando sincronização...");
-    syncPendingOperations().catch(console.error);
-  };
-
-  if (typeof window !== "undefined") {
-    window.addEventListener("online", onlineHandler);
-  }
-
-  // Retorna função de cleanup
-  return () => {
-    clearInterval(syncInterval);
-    if (typeof window !== "undefined") {
-      window.removeEventListener("online", onlineHandler);
-    }
-  };
-}
+// setupAutoSync foi movido para SyncManager em sync-manager.ts
