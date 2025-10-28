@@ -11,9 +11,23 @@ async function startServer() {
 
     await initializeDatabase();
 
-    // Iniciar workers de processamento
+    // Iniciar workers de processamento (podem ser null se Redis não estiver disponível)
     const syncWorker = startSyncWorker();
     const storageWorker = startStorageWorker();
+
+    if (!syncWorker) {
+      console.log(
+        "ℹ️  Worker de sincronização desabilitado (Redis não configurado)"
+      );
+    } else {
+      console.log("✅ Worker de sincronização iniciado");
+    }
+
+    if (!storageWorker) {
+      console.log("ℹ️  Worker de storage desabilitado (Redis não configurado)");
+    } else {
+      console.log("✅ Worker de storage iniciado");
+    }
 
     const app = createApp();
 
@@ -23,15 +37,20 @@ async function startServer() {
     const shutdown = async () => {
       console.log("\n🛑 Encerrando servidor graciosamente...");
 
-      if (syncWorker) {
-        await syncWorker.close();
-      }
+      // Workers podem ser null se Redis não estiver disponível
+      try {
+        if (syncWorker) {
+          await syncWorker.close();
+        }
 
-      if (storageWorker) {
-        await storageWorker.close();
-      }
+        if (storageWorker) {
+          await storageWorker.close();
+        }
 
-      await closeQueues();
+        await closeQueues();
+      } catch (error) {
+        console.error("⚠️ Erro ao fechar workers/queues:", error);
+      }
 
       process.exit(0);
     };

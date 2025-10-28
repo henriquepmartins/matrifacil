@@ -19,6 +19,9 @@ import Link from "next/link";
 import { Loader2, Save, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
+import { isOnline } from "@/lib/utils/network";
+import { getAllPreMatriculas } from "@/lib/services/pre-matricula-cache.service";
+import { cachePreMatriculasFromServer } from "@/lib/services/pre-matricula-cache.service";
 
 type PreResumo = {
   id: string;
@@ -60,16 +63,53 @@ export default function NovaMatriculaPage() {
   const { data: pres, isLoading: loadingPres } = useQuery({
     queryKey: ["pre-matriculas", searchPre],
     queryFn: async (): Promise<PreResumo[]> => {
-      const params = new URLSearchParams();
-      params.set("status", "pre");
-      if (searchPre) params.set("search", searchPre);
+      console.log("🔍 Buscando pré-matrículas para nova matrícula...");
+
       try {
-        const result = await apiClient.get(`/api/pre-matriculas?${params}`);
-        return ((result as any).data || []) as PreResumo[];
+        // Tentar buscar do servidor se online
+        if (isOnline()) {
+          console.log("🌐 Online - buscando do servidor e cacheando");
+          await cachePreMatriculasFromServer();
+        }
       } catch (error) {
-        console.error("Erro ao buscar pré-matrículas:", error);
-        return [];
+        console.warn("⚠️ Erro ao buscar do servidor, usando cache:", error);
       }
+
+      // Sempre retornar dados locais (synced + pending)
+      console.log("📂 Buscando dados locais...");
+      const localData = await getAllPreMatriculas();
+
+      // Filtrar apenas pré-matrículas (status: "pre") e buscar se houver
+      let filtered = localData.filter((item: any) => item.status === "pre");
+
+      // Se houver busca, filtrar localmente
+      if (searchPre) {
+        const searchLower = searchPre.toLowerCase();
+        filtered = filtered.filter(
+          (item: any) =>
+            item.aluno?.nome.toLowerCase().includes(searchLower) ||
+            item.protocoloLocal.toLowerCase().includes(searchLower)
+        );
+      }
+
+      console.log(
+        `✅ ${filtered.length} pré-matrículas encontradas (${localData.length} total)`
+      );
+
+      // Converter para o formato esperado
+      return filtered.map((item: any) => ({
+        id: item.id || item.idGlobal,
+        protocoloLocal: item.protocoloLocal,
+        aluno: {
+          nome: item.aluno?.nome || "",
+          etapa: item.aluno?.etapa || "",
+          necessidadesEspeciais: item.aluno?.necessidadesEspeciais || false,
+        },
+        responsavel: {
+          nome: item.responsavel?.nome || "",
+        },
+        createdAt: item.createdAt,
+      }));
     },
   });
 

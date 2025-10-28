@@ -145,8 +145,10 @@ export default function NovaPreMatriculaPage() {
           `Pré-matrícula salva localmente! Protocolo: ${result.protocoloLocal}. Será sincronizada quando houver conexão.`,
           { duration: 5000 }
         );
-        // Invalidar query para atualizar tabela
-        queryClient.invalidateQueries({ queryKey: ["pre-matriculas"] });
+        // Invalidar query para atualizar tabela e aguardar
+        await queryClient.invalidateQueries({ queryKey: ["pre-matriculas"] });
+        // Pequeno delay para garantir que o IndexedDB commitou
+        await new Promise((resolve) => setTimeout(resolve, 100));
         router.push("/dashboard/pre-matriculas");
         return;
       }

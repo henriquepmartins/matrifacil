@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { MoreHorizontal, Edit, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { deletePreMatriculaLocal } from "@/lib/services/pre-matricula-offline.service";
 
 interface MatriculaData {
   id: string;
@@ -39,6 +40,7 @@ interface MatriculaData {
   status: "pre" | "pendente_doc" | "completo" | "concluido";
   data: string;
   cuidadora?: boolean;
+  sync_status?: "pending" | "synced" | "conflict";
   // Dados completos da API
   alunoData?: {
     id: string;
@@ -101,12 +103,18 @@ export default function MatriculaActionsMenu({
   // Mutação para deletar matrícula
   const deleteMatricula = useMutation({
     mutationFn: async (id: string) => {
-      const response = await fetch(
-        `${API_URL}/api/matriculas/${id}`,
-        {
-          method: "DELETE",
-        }
-      );
+      // Se for uma matrícula local (pending), deletar localmente
+      if (matricula.sync_status === "pending") {
+        console.log("🗑️ Deletando matrícula local...");
+        await deletePreMatriculaLocal(id);
+        return { success: true };
+      }
+
+      // Se for uma matrícula sincronizada, deletar no servidor
+      console.log("🌐 Deletando matrícula no servidor...");
+      const response = await fetch(`${API_URL}/api/matriculas/${id}`, {
+        method: "DELETE",
+      });
       if (!response.ok) {
         throw new Error("Erro ao deletar matrícula");
       }
