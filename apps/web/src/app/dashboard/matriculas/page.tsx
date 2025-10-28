@@ -17,6 +17,11 @@ import MatriculaActionsMenu from "@/components/matricula-actions-menu";
 import { Plus, Eye, Edit, GraduationCap, FileText } from "lucide-react";
 import Link from "next/link";
 import { apiClient } from "@/lib/api-client";
+import { isOnline } from "@/lib/utils/network";
+import {
+  cacheMatriculasFromServer,
+  getMatriculasFromCache,
+} from "@/lib/services/matricula-cache.service";
 
 type MatriculaRow = {
   id: string;
@@ -120,37 +125,60 @@ export default function MatriculasPage() {
   const [filtroStatus, setFiltroStatus] = useState<string>("todos");
   const [filtroTurma, setFiltroTurma] = useState<string>("todos");
 
-  const { data: matriculas, isLoading, error } = useQuery({
+  const {
+    data: matriculas,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["matriculas", filtroStatus, filtroTurma],
     queryFn: async (): Promise<MatriculaRow[]> => {
       console.log("🔍 Buscando matrículas...", { filtroStatus, filtroTurma });
-      const params = new URLSearchParams();
-      if (filtroStatus !== "todos") params.set("status", filtroStatus);
-      if (filtroTurma !== "todos") params.set("etapa", filtroTurma);
-      
+
       try {
-        const result = await apiClient.get(`/api/matriculas?${params.toString()}`);
-        console.log("📦 Resposta da API:", result);
-        const data = (result?.data || []) as Array<any>;
-        console.log(`✅ ${data.length} matrículas carregadas`);
-        return data.map((item) => ({
-          id: item.id,
-          protocolo: item.protocoloLocal,
-          aluno: item.aluno?.nome || "Sem nome",
-          responsavel: item.responsavel?.nome || "Sem nome",
-          turma: item.turma ? `${item.turma.nome} - ${item.turma.turno}` : null,
-          status: item.status,
-          data: new Date(item.createdAt).toLocaleDateString("pt-BR"),
-          cuidadora: Boolean(item.aluno?.necessidadesEspeciais),
-          // Dados completos para o modal
-          alunoData: item.aluno,
-          responsavelData: item.responsavel,
-          turmaData: item.turma,
-        }));
+        // Tentar buscar do servidor se online
+        if (isOnline()) {
+          console.log("🌐 Online - buscando do servidor e cacheando");
+          const serverData = await cacheMatriculasFromServer();
+
+          return serverData.map((item: any) => ({
+            id: item.id,
+            protocolo: item.protocoloLocal,
+            aluno: item.aluno?.nome || "Sem nome",
+            responsavel: item.responsavel?.nome || "Sem nome",
+            turma: item.turma
+              ? `${item.turma.nome} - ${item.turma.turno}`
+              : null,
+            status: item.status,
+            data: new Date(item.createdAt).toLocaleDateString("pt-BR"),
+            cuidadora: Boolean(item.aluno?.necessidadesEspeciais),
+            alunoData: item.aluno,
+            responsavelData: item.responsavel,
+            turmaData: item.turma,
+          }));
+        }
       } catch (error) {
-        console.error("❌ Erro ao buscar matrículas:", error);
-        return [];
+        console.warn("⚠️ Erro ao buscar do servidor, usando cache", error);
       }
+
+      // Offline ou erro - buscar do cache
+      console.log("📴 Offline ou erro - usando cache local");
+      const cachedData = await getMatriculasFromCache();
+
+      return cachedData.map((item: any) => ({
+        id: item.id,
+        protocolo: item.protocoloLocal,
+        aluno: item.aluno?.nome || "Sem nome",
+        responsavel: item.responsavel?.nome || "Sem nome",
+        turma: item.turma ? `${item.turma.nome} - ${item.turma.turno}` : null,
+        status: item.status,
+        data: item.createdAt
+          ? new Date(item.createdAt).toLocaleDateString("pt-BR")
+          : "N/A",
+        cuidadora: Boolean(item.aluno?.necessidadesEspeciais),
+        alunoData: item.aluno,
+        responsavelData: item.responsavel,
+        turmaData: item.turma,
+      }));
     },
   });
 

@@ -52,6 +52,8 @@ export interface CachedAluno {
   status: "pre" | "pendente_doc" | "completo" | "concluido";
   necessidadesEspeciais: boolean;
   observacoes?: string;
+  sync_status?: "pending" | "synced" | "conflict";
+  synced_at?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -70,6 +72,8 @@ export interface CachedResponsavel {
   email?: string;
   parentesco: string;
   autorizadoRetirada: boolean;
+  sync_status?: "pending" | "synced" | "conflict";
+  synced_at?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -87,6 +91,8 @@ export interface CachedTurma {
   anoLetivo: string;
   nome: string;
   ativa: boolean;
+  sync_status?: "pending" | "synced" | "conflict";
+  synced_at?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -104,6 +110,8 @@ export interface CachedMatricula {
   status: "pre" | "pendente_doc" | "completo" | "concluido";
   dataMatricula?: Date;
   observacoes?: string;
+  sync_status?: "pending" | "synced" | "conflict";
+  synced_at?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -126,6 +134,8 @@ export interface CachedDocumento {
   nomeArquivo?: string;
   tamanhoArquivo?: number;
   observacoes?: string;
+  sync_status?: "pending" | "synced" | "conflict";
+  synced_at?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -142,6 +152,8 @@ export interface CachedPendencia {
   resolvido: boolean;
   dataResolucao?: Date;
   observacoes?: string;
+  sync_status?: "pending" | "synced" | "conflict";
+  synced_at?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -153,6 +165,24 @@ export interface SyncMetadata {
   key: string;
   value: any;
   updatedAt: Date;
+}
+
+/**
+ * Interface para arquivos marcados para upload
+ * Armazena apenas metadados - não armazena o arquivo em si
+ */
+export interface FileMarker {
+  id: string;
+  matriculaId: string;
+  documentoId: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  localPath?: string; // Para futuro uso
+  status: "pending" | "uploading" | "completed" | "failed";
+  markedAt: Date;
+  uploadedAt?: Date;
+  error?: string;
 }
 
 /**
@@ -169,6 +199,7 @@ export class MatriFacilDB extends Dexie {
   matriculas!: Table<CachedMatricula, string>;
   documentos!: Table<CachedDocumento, string>;
   pendencias!: Table<CachedPendencia, string>;
+  fileMarkers!: Table<FileMarker, string>;
 
   constructor() {
     super("MatriFacilDB");
@@ -185,13 +216,34 @@ export class MatriFacilDB extends Dexie {
       sessions: "id, userId, expiresAt",
       syncQueue: "++id, synced, timestamp",
       syncMetadata: "key, updatedAt",
-      alunos: "id, idGlobal, nome, dataNascimento, etapa, status, updatedAt",
-      responsaveis: "id, idGlobal, cpf, nome, updatedAt",
-      turmas: "id, idGlobal, etapa, turno, anoLetivo, ativa, updatedAt",
+      alunos:
+        "id, idGlobal, nome, dataNascimento, etapa, status, sync_status, updatedAt",
+      responsaveis: "id, idGlobal, cpf, nome, sync_status, updatedAt",
+      turmas:
+        "id, idGlobal, etapa, turno, anoLetivo, ativa, sync_status, updatedAt",
       matriculas:
-        "id, idGlobal, protocoloLocal, alunoId, responsavelId, turmaId, status, updatedAt",
-      documentos: "id, matriculaId, tipo, status, updatedAt",
-      pendencias: "id, matriculaId, documentoId, resolvido, updatedAt",
+        "id, idGlobal, protocoloLocal, alunoId, responsavelId, turmaId, status, sync_status, updatedAt",
+      documentos: "id, matriculaId, tipo, status, sync_status, updatedAt",
+      pendencias:
+        "id, matriculaId, documentoId, resolvido, sync_status, updatedAt",
+    });
+
+    this.version(3).stores({
+      users: "id, email, updatedAt",
+      sessions: "id, userId, expiresAt",
+      syncQueue: "++id, synced, timestamp",
+      syncMetadata: "key, updatedAt",
+      alunos:
+        "id, idGlobal, nome, dataNascimento, etapa, status, sync_status, updatedAt",
+      responsaveis: "id, idGlobal, cpf, nome, sync_status, updatedAt",
+      turmas:
+        "id, idGlobal, etapa, turno, anoLetivo, ativa, sync_status, updatedAt",
+      matriculas:
+        "id, idGlobal, protocoloLocal, alunoId, responsavelId, turmaId, status, sync_status, updatedAt",
+      documentos: "id, matriculaId, tipo, status, sync_status, updatedAt",
+      pendencias:
+        "id, matriculaId, documentoId, resolvido, sync_status, updatedAt",
+      fileMarkers: "id, matriculaId, documentoId, status, markedAt",
     });
   }
 }

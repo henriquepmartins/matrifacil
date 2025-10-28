@@ -88,7 +88,7 @@ export default function Dashboard() {
     queryFn: async (): Promise<MatriculaRow[]> => {
       try {
         const result = await apiClient.get("/api/pre-matriculas?limit=5");
-        const data = (result?.data || []) as Array<any>;
+        const data = ((result as any)?.data || result || []) as Array<any>;
         // Mapear para o formato esperado pela tabela
         return data.map((item) => ({
           id: item.id,

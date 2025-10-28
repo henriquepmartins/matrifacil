@@ -17,6 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import SyncIndicator from "@/components/sync-indicator";
 import { AppSidebar } from "@/components/app-sidebar";
 import { usePathname } from "next/navigation";
+import { NetworkStatusIndicator } from "@/components/network-status-indicator";
 
 function getBreadcrumbItems(pathname: string) {
   const segments = pathname.split("/").filter(Boolean);
@@ -108,6 +109,7 @@ export default function DashboardLayout({
     <SidebarProvider>
       <AppSidebar />
       <DashboardContent>{children}</DashboardContent>
+      <NetworkStatusIndicator />
     </SidebarProvider>
   );
 }

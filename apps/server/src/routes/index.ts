@@ -5,6 +5,7 @@ import dashboardRoutes from "./dashboard.routes.js";
 import relatorioRoutes from "./relatorio.routes.js";
 import testRoutes from "./test.routes.js";
 import docsRoutes from "./docs.routes.js";
+import syncRoutes from "./sync.routes.js";
 
 const router = Router();
 
@@ -16,6 +17,9 @@ router.use("/health", healthRoutes);
 
 // Auth routes
 router.use("/api/auth", authRoutes);
+
+// Sync routes
+router.use("/api/sync", syncRoutes);
 
 // Dashboard routes
 router.use("/", dashboardRoutes);
