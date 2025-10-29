@@ -94,8 +94,10 @@ export async function cacheMatriculasFromServer() {
     console.log(`✅ ${matriculas.length} matrículas cacheadas no IndexedDB`);
     return matriculas;
   } catch (error) {
-    console.error("❌ Erro ao cachear matrículas:", error);
-    throw error;
+    console.warn(
+      "⚠️ Servidor offline ou erro de conexão, usando apenas cache local"
+    );
+    return getMatriculasFromCache();
   }
 }
 
@@ -165,4 +167,31 @@ export async function getAllMatriculas() {
   );
 
   return result;
+}
+
+/**
+ * Força a atualização do cache local (útil após operações offline)
+ */
+export async function refreshMatriculasCache() {
+  console.log("🔄 Forçando atualização do cache de matrículas...");
+
+  try {
+    if (typeof window !== "undefined" && navigator.onLine) {
+      console.log("🌐 Online - tentando atualizar do servidor...");
+      try {
+        await cacheMatriculasFromServer();
+        console.log("✅ Cache atualizado do servidor");
+      } catch (error) {
+        console.warn(
+          "⚠️ Erro ao atualizar do servidor, usando apenas cache local:",
+          error
+        );
+      }
+    }
+
+    return getAllMatriculas();
+  } catch (error) {
+    console.error("❌ Erro ao atualizar cache:", error);
+    throw error;
+  }
 }

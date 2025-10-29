@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { getSyncQueueStats, isOnline as checkOnline } from "../db/sync";
+import {
+  getSyncQueueStats,
+  isOnline as checkOnline,
+  ensureDatabaseReady,
+} from "../db/sync";
 import { syncManager, type SyncSource } from "../sync/sync-manager";
 
 interface SyncStats {
@@ -39,8 +43,15 @@ export function useOfflineSync(): UseOfflineSyncReturn {
    * Atualiza as estatísticas da fila
    */
   const updateStats = async () => {
-    const newStats = await getSyncQueueStats();
-    setStats(newStats);
+    try {
+      await ensureDatabaseReady();
+      const newStats = await getSyncQueueStats();
+      console.log("📊 Stats atualizados:", newStats);
+      setStats(newStats);
+    } catch (error) {
+      console.error("❌ Erro ao atualizar estatísticas:", error);
+      // Manter stats atuais em caso de erro
+    }
   };
 
   /**

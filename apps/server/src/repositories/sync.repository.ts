@@ -150,7 +150,7 @@ export class SyncRepository {
               }
 
               // Gerar protocolo definitivo
-              const protocolo = this.generateProtocolo(
+              const protocolo = await this.generateProtocolo(
                 item.data.aluno?.etapa || "bercario"
               );
 
@@ -306,18 +306,22 @@ export class SyncRepository {
     return crypto.randomUUID();
   }
 
-  private generateProtocolo(etapa: string): string {
-    const ano = new Date().getFullYear();
-    // Usar o novo formato: ETAPA - ANO - ID
-    const etapaFormatada = etapa
-      .toUpperCase()
-      .replace(/[ÁÀÂÃÄ]/g, "A")
-      .replace(/[ÉÈÊË]/g, "E")
-      .replace(/[ÍÌÎÏ]/g, "I")
-      .replace(/[ÓÒÔÕÖ]/g, "O")
-      .replace(/[ÚÙÛÜ]/g, "U")
-      .replace(/[Ç]/g, "C");
-    return `${etapaFormatada} - ${ano} - 001`;
+  private async generateProtocolo(etapa: string): Promise<string> {
+    const year = new Date().getFullYear();
+
+    const existingProtocols = await db
+      .select({ protocoloLocal: matricula.protocoloLocal })
+      .from(matricula)
+      .where(sql`${matricula.protocoloLocal} LIKE ${`% - ${year} - %`}`)
+      .orderBy(sql`${matricula.protocoloLocal} DESC`);
+
+    const protocolosExistentes = existingProtocols.map((p) => p.protocoloLocal);
+
+    // Usar o novo gerador de protocolos
+    const { ProtocoloGenerator } = await import(
+      "../utils/protocol-generator.js"
+    );
+    return ProtocoloGenerator.generateNext(etapa, protocolosExistentes, year);
   }
 }
 

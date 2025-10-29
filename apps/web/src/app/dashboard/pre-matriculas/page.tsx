@@ -23,6 +23,7 @@ import { isOnline } from "@/lib/utils/network";
 import {
   cachePreMatriculasFromServer,
   getAllPreMatriculas,
+  refreshPreMatriculasCache,
 } from "@/lib/services/pre-matricula-cache.service";
 
 interface PreMatricula {
@@ -70,6 +71,23 @@ export default function PreMatriculasPage() {
   const [editingPreMatricula, setEditingPreMatricula] =
     useState<PreMatricula | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  // Refresh automático quando a página recebe foco (para capturar novas pré-matrículas offline)
+  useEffect(() => {
+    const handleFocus = async () => {
+      console.log("🔄 Página recebeu foco, atualizando dados...");
+      try {
+        await refreshPreMatriculasCache();
+        queryClient.invalidateQueries({ queryKey: ["pre-matriculas"] });
+      } catch (error) {
+        console.warn("⚠️ Erro ao atualizar dados:", error);
+        queryClient.invalidateQueries({ queryKey: ["pre-matriculas"] });
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [queryClient]);
 
   // Sincronização automática quando online (DESABILITADA TEMPORARIAMENTE)
   // useEffect(() => {

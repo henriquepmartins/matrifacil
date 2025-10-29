@@ -164,3 +164,32 @@ export async function getAllPreMatriculas() {
 
   return result;
 }
+
+/**
+ * Força a atualização do cache local (útil após operações offline)
+ */
+export async function refreshPreMatriculasCache() {
+  console.log("🔄 Forçando atualização do cache de pré-matrículas...");
+
+  try {
+    // Tentar buscar do servidor se online
+    if (typeof window !== "undefined" && navigator.onLine) {
+      console.log("🌐 Online - tentando atualizar do servidor...");
+      try {
+        await cachePreMatriculasFromServer();
+        console.log("✅ Cache atualizado do servidor");
+      } catch (error) {
+        console.warn(
+          "⚠️ Erro ao atualizar do servidor, usando apenas cache local:",
+          error
+        );
+      }
+    }
+
+    // Sempre retornar dados locais atualizados
+    return getAllPreMatriculas();
+  } catch (error) {
+    console.error("❌ Erro ao atualizar cache:", error);
+    throw error;
+  }
+}
