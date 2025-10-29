@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "type": "commonjs",
   "scripts": {
-    "build": "cd ../../packages/db && bun run build && cd ../../apps/server && bun run build",
-    "start": "node api/index.js",
-    "vercel-build": "cd ../../packages/db && bun run build && cd ../../apps/server && bun run build"
+    "build": "cd ../../packages/db && bun run build && cd ../../apps/server && bun run build && bun run build:serverless",
+    "build:serverless": "esbuild src/handlers/vercel.ts --bundle --format=cjs --outfile=api/serverless.js --platform=node --target=node18 --external:pg --external:drizzle-orm --external:dotenv --external:zod --external:bcrypt --external:cookie-parser --external:cors --external:express --external:jsonwebtoken --external:pdfkit --external:uuid --external:@scalar/api-reference --external:@scalar/express-api-reference --external:csv-stringify --external:ioredis --external:bullmq --external:@supabase/supabase-js --external:multer --resolve-extensions=.js,.ts --alias:@matrifacil-/db=../../packages/db/dist/index.js --banner:js='// @ts-nocheck'",
+    "start": "node api/serverless.js",
+    "vercel-build": "cd ../../packages/db && bun run build && cd ../../apps/server && bun run build && bun run build:serverless"
   },
   "dependencies": {
     "@matrifacil-/db": "file:../../packages/db",

@@ -1,5 +1,10 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import dns from "node:dns";
+
+// Força resolução DNS para IPv4 primeiro (deve ser configurado antes de qualquer conexão)
+// Isso resolve problemas de conectividade IPv6 no Railway e outros ambientes
+dns.setDefaultResultOrder("ipv4first");
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -26,6 +31,9 @@ const pool = new Pool({
   // Configurações adicionais para estabilidade
   keepAlive: true,
   keepAliveInitialDelayMillis: 0,
+  // Forçar uso de IPv4 para evitar problemas de conectividade no Railway
+  // @ts-expect-error - família de IP não está tipada no @types/pg mas é suportada pelo node-pg
+  family: 4,
 });
 
 // Configuração do Drizzle - Prepared statements habilitados para conexão direta

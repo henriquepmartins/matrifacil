@@ -24,9 +24,10 @@ export async function diagnoseAndFix() {
     
     if (queueItems.length > 0) {
       console.log("   Primeiros itens:", queueItems.slice(0, 3).map(q => ({
-        entity: q.entity,
-        operation: q.operation,
-        id_local: q.id_local,
+        table: q.table,
+        action: q.action,
+        synced: q.synced,
+        timestamp: q.timestamp,
       })));
     }
     

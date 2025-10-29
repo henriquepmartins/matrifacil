@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "esbuild src/index.ts --bundle --format=esm --outfile=dist/index.js --platform=node --target=node18 --external:pg --external:drizzle-orm --external:dotenv --external:zod --external:bcrypt --external:cookie-parser --external:cors --external:express --external:jsonwebtoken --external:pdfkit --external:uuid --external:@scalar/api-reference --external:@scalar/express-api-reference --external:csv-stringify --external:ioredis --external:bullmq --external:@supabase/supabase-js --external:multer",
+    "build:serverless": "esbuild src/handlers/vercel.ts --bundle --format=cjs --outfile=api/serverless.js --platform=node --target=node18 --external:pg --external:drizzle-orm --external:dotenv --external:zod --external:bcrypt --external:cookie-parser --external:cors --external:express --external:jsonwebtoken --external:pdfkit --external:uuid --external:@scalar/api-reference --external:@scalar/express-api-reference --external:csv-stringify --external:ioredis --external:bullmq --external:@supabase/supabase-js --external:multer --resolve-extensions=.js,.ts --alias:@matrifacil-/db=../../packages/db/dist/index.js --banner:js='// @ts-nocheck'",
     "dev": "tsx watch src/index.ts",
     "start": "node api/index.js",
     "test:redis": "tsx scripts/test-redis-simple.ts"

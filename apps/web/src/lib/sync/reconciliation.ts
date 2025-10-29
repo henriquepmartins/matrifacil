@@ -1,5 +1,6 @@
 import { db } from "../db/index";
 import type { BatchItem } from "./batch-builder";
+import type { CachedMatricula } from "../db/schema";
 
 export interface SyncMapping {
   entity: string;
@@ -62,17 +63,24 @@ export async function reconcileData(mappings: SyncMapping[]): Promise<void> {
         }
 
         // Atualizar com ID global e marcar como sincronizado
-        await store.update(id_local, {
-          idGlobal: id_global,
+        // Documentos e pendências não têm idGlobal, apenas sync_status
+        const updateData: any = {
           sync_status: "synced",
           synced_at: Date.now(),
-        } as any);
+        };
+        
+        // Adicionar idGlobal apenas para entidades que suportam
+        if (entity !== "documento" && entity !== "pendencia") {
+          updateData.idGlobal = id_global;
+        }
+        
+        await store.update(id_local, updateData);
 
         console.log(`✅ Reconciliado ${entity} ${id_local} → ${id_global}`);
         
-        // Debug: Verificar se o update foi bem-sucedido
+        // Debug: Verificar se o update foi bem-sucedido (apenas para matrículas)
         if (entity === "matricula") {
-          const verificado = await store.get(id_local);
+          const verificado = await store.get(id_local) as CachedMatricula | undefined;
           console.log(`🔍 Verificação pós-update:`, {
             id_local,
             id_global,

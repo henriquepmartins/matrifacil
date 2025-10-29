@@ -1,8 +1,9 @@
 {
   "version": 2,
+  "buildCommand": "cd ../../packages/db && bun run build && cd ../../apps/server && bun run build && bun run build:serverless",
   "builds": [
     {
-      "src": "api/index.js",
+      "src": "api/serverless.js",
       "use": "@vercel/node",
       "config": {
         "includeFiles": ["dist/**", "../../packages/db/dist/**"]
@@ -12,14 +13,14 @@
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/api/index.js"
+      "dest": "/api/serverless.js"
     }
   ],
   "env": {
     "NODE_ENV": "production"
   },
   "functions": {
-    "api/index.js": {
+    "api/serverless.js": {
       "maxDuration": 30
     }
   }
