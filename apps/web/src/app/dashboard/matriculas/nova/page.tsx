@@ -97,8 +97,9 @@ export default function NovaMatriculaPage() {
       );
 
       // Converter para o formato esperado
-      return filtered.map((item: any) => ({
-        id: item.id || item.idGlobal,
+      const result = filtered.map((item: any) => ({
+        id: item.id, // Já prioriza ID global nos serviços de cache
+        idLocal: item.idLocal, // Manter referência ao ID local se necessário
         protocoloLocal: item.protocoloLocal,
         aluno: {
           nome: item.aluno?.nome || "",
@@ -110,6 +111,14 @@ export default function NovaMatriculaPage() {
         },
         createdAt: item.createdAt,
       }));
+
+      // Debug: Mostrar IDs para verificar se estão corretos
+      console.log(
+        "🔍 IDs das pré-matrículas:",
+        result.map((r) => ({ protocolo: r.protocoloLocal, id: r.id, idLocal: r.idLocal }))
+      );
+
+      return result;
     },
   });
 
@@ -154,6 +163,7 @@ export default function NovaMatriculaPage() {
 
       console.log("🎯 Criando matrícula:", {
         preMatriculaId: selectedPreId,
+        selectedPre: selectedPre,
         turmaId,
         dataMatricula,
         documentosIniciais: docsSelecionados,

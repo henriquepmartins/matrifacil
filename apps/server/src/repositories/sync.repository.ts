@@ -159,7 +159,7 @@ export class SyncRepository {
                 alunoId: _,
                 responsavelId: __,
                 turmaId: ___,
-                status: ____status,
+                status: originalStatus,
                 protocoloLocal: ____protocolo,
                 createdAt: ____c,
                 updatedAt: ____u,
@@ -175,8 +175,8 @@ export class SyncRepository {
                   turmaId: id_turma_global,
                   ...restOfData,
                   protocoloLocal: protocolo,
-                  // Respeitar status possivelmente ajustado pela lógica de vagas acima
-                  status: restOfData.status ?? "completo",
+                  // Respeitar status original ou ajustado pela lógica de vagas
+                  status: originalStatus ?? "pre",
                 })
                 .returning({ id: matricula.id });
               id_global = created.id;

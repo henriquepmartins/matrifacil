@@ -52,7 +52,6 @@ const navItems: NavItem[] = [
     title: "Turmas",
     href: "/dashboard/turmas",
     icon: Users,
-    permission: "canAccessTurmas",
   },
   {
     title: "Relatórios",

@@ -104,7 +104,8 @@ export async function getPreMatriculasFromCache() {
       const responsavel = await db.responsaveis.get(m.responsavelId);
 
       return {
-        id: m.id || m.idGlobal,
+        id: m.idGlobal || m.id, // Priorizar ID global quando sincronizado
+        idLocal: m.id, // Manter referência ao ID local
         protocoloLocal: m.protocoloLocal,
         status: m.status,
         observacoes: m.observacoes,
@@ -137,6 +138,16 @@ export async function getAllPreMatriculas() {
     .toArray();
 
   console.log(`📦 ${matriculas.length} pré-matrículas encontradas no cache`);
+  
+  // Debug: Mostrar IDs brutos do IndexedDB
+  console.log("🔍 IDs brutos do IndexedDB:", 
+    matriculas.map(m => ({ 
+      id: m.id, 
+      idGlobal: m.idGlobal, 
+      sync_status: m.sync_status,
+      protocolo: m.protocoloLocal 
+    }))
+  );
 
   // Buscar dados relacionados e incluir sync_status
   const result = await Promise.all(
@@ -145,7 +156,8 @@ export async function getAllPreMatriculas() {
       const responsavel = await db.responsaveis.get(m.responsavelId);
 
       return {
-        id: m.id || m.idGlobal,
+        id: m.idGlobal || m.id, // Priorizar ID global quando sincronizado
+        idLocal: m.id, // Manter referência ao ID local
         protocoloLocal: m.protocoloLocal,
         status: m.status,
         observacoes: m.observacoes,
