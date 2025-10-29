@@ -281,7 +281,7 @@ export class DrizzleMatriculaRepository implements MatriculaRepository {
   }
 
   async createPreMatricula(data: any): Promise<Matricula> {
-    const protocolo = await this.generateProtocolo();
+    const protocolo = await this.generateProtocolo(data.aluno.etapa);
 
     // Buscar uma turma disponível para a etapa do aluno
     const turmaDisponivel = await db
@@ -351,25 +351,22 @@ export class DrizzleMatriculaRepository implements MatriculaRepository {
     return this.findById(matriculaId) as Promise<Matricula>;
   }
 
-  private async generateProtocolo(): Promise<string> {
+  private async generateProtocolo(etapa: string): Promise<string> {
     const year = new Date().getFullYear();
 
     const existingProtocols = await db
       .select({ protocoloLocal: matricula.protocoloLocal })
       .from(matricula)
-      .where(like(matricula.protocoloLocal, `PRE-${year}-%`))
+      .where(like(matricula.protocoloLocal, `% - ${year} - %`))
       .orderBy(sql`${matricula.protocoloLocal} DESC`);
 
-    let nextNumber = 1;
-    if (existingProtocols.length > 0) {
-      const lastProtocol = existingProtocols[0].protocoloLocal;
-      const match = lastProtocol.match(/PRE-\d{4}-(\d{3})/);
-      if (match) {
-        nextNumber = parseInt(match[1]) + 1;
-      }
-    }
+    const protocolosExistentes = existingProtocols.map((p) => p.protocoloLocal);
 
-    return `PRE-${year}-${nextNumber.toString().padStart(3, "0")}`;
+    // Usar o novo gerador de protocolos
+    const { ProtocoloGenerator } = await import(
+      "../../utils/protocol-generator.js"
+    );
+    return ProtocoloGenerator.generateNext(etapa, protocolosExistentes, year);
   }
 
   private mapToMatricula(result: any): Matricula {

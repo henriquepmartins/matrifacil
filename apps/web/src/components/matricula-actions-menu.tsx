@@ -29,9 +29,12 @@ import {
 } from "@/components/ui/select";
 import { MoreHorizontal, Edit, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { deletePreMatriculaLocal } from "@/lib/services/pre-matricula-offline.service";
+import { db } from "@/lib/db/schema";
 
 interface MatriculaData {
   id: string;
+  idGlobal?: string; // ID global do servidor
   protocolo: string;
   aluno: string;
   responsavel: string;
@@ -39,6 +42,7 @@ interface MatriculaData {
   status: "pre" | "pendente_doc" | "completo" | "concluido";
   data: string;
   cuidadora?: boolean;
+  sync_status?: "pending" | "synced" | "conflict";
   // Dados completos da API
   alunoData?: {
     id: string;
@@ -101,14 +105,66 @@ export default function MatriculaActionsMenu({
   // Mutação para deletar matrícula
   const deleteMatricula = useMutation({
     mutationFn: async (id: string) => {
-      const response = await fetch(
-        `${API_URL}/api/matriculas/${id}`,
-        {
-          method: "DELETE",
-        }
-      );
+      console.log("🔍 Debug - Dados da matrícula:", {
+        id: matricula.id,
+        idGlobal: matricula.idGlobal,
+        protocolo: matricula.protocolo,
+        sync_status: matricula.sync_status,
+        status: matricula.status,
+      });
+
+      // Se for uma matrícula local (pending), deletar localmente
+      if (matricula.sync_status === "pending") {
+        console.log("🗑️ Deletando matrícula local...");
+        await deletePreMatriculaLocal(id);
+        return { success: true };
+      }
+
+      // Se for uma matrícula sincronizada, usar o ID global para deletar no servidor
+      const serverId = matricula.idGlobal || matricula.id;
+      console.log("🌐 Deletando matrícula no servidor...", {
+        protocoloLocal: matricula.protocolo,
+        serverId,
+        sync_status: matricula.sync_status,
+      });
+
+      // Se não tem idGlobal, pode ser que seja uma matrícula local que não foi sincronizada
+      if (!matricula.idGlobal && matricula.sync_status !== "synced") {
+        console.log(
+          "⚠️ Matrícula sem idGlobal, tentando deletar localmente..."
+        );
+        await deletePreMatriculaLocal(id);
+        return { success: true };
+      }
+
+      const response = await fetch(`${API_URL}/api/matriculas/${serverId}`, {
+        method: "DELETE",
+      });
       if (!response.ok) {
-        throw new Error("Erro ao deletar matrícula");
+        const errorText = await response.text();
+        console.error("❌ Erro na resposta do servidor:", errorText);
+
+        // Se erro 404, tentar deletar localmente (matrícula pode estar apenas local)
+        if (response.status === 404) {
+          console.log(
+            "🔄 Matrícula não encontrada no servidor, deletando localmente..."
+          );
+
+          // Atualizar sync_status para pending antes de deletar localmente
+          try {
+            await db.matriculas.update(id, { sync_status: "pending" });
+            console.log("✅ Sync status atualizado para pending");
+          } catch (error) {
+            console.warn("⚠️ Erro ao atualizar sync_status:", error);
+          }
+
+          await deletePreMatriculaLocal(id);
+          return { success: true };
+        }
+
+        throw new Error(
+          `Erro ao deletar matrícula: ${response.status} - ${errorText}`
+        );
       }
       return response.json();
     },
@@ -118,6 +174,7 @@ export default function MatriculaActionsMenu({
       setIsDeleteDialogOpen(false);
     },
     onError: (error) => {
+      console.error("❌ Erro ao deletar matrícula:", error);
       toast.error("Erro ao deletar matrícula: " + error.message);
     },
   });

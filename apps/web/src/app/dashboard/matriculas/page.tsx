@@ -21,10 +21,12 @@ import { isOnline } from "@/lib/utils/network";
 import {
   cacheMatriculasFromServer,
   getMatriculasFromCache,
+  getAllMatriculas,
 } from "@/lib/services/matricula-cache.service";
 
 type MatriculaRow = {
   id: string;
+  idGlobal?: string; // ID global do servidor
   protocolo: string;
   aluno: string;
   responsavel: string;
@@ -32,6 +34,7 @@ type MatriculaRow = {
   status: "pre" | "pendente_doc" | "completo" | "concluido";
   data: string;
   cuidadora?: boolean;
+  sync_status?: "pending" | "synced" | "conflict";
   actions?: any; // Para a coluna de ações
   // Dados completos da API
   alunoData?: {
@@ -138,34 +141,19 @@ export default function MatriculasPage() {
         // Tentar buscar do servidor se online
         if (isOnline()) {
           console.log("🌐 Online - buscando do servidor e cacheando");
-          const serverData = await cacheMatriculasFromServer();
-
-          return serverData.map((item: any) => ({
-            id: item.id,
-            protocolo: item.protocoloLocal,
-            aluno: item.aluno?.nome || "Sem nome",
-            responsavel: item.responsavel?.nome || "Sem nome",
-            turma: item.turma
-              ? `${item.turma.nome} - ${item.turma.turno}`
-              : null,
-            status: item.status,
-            data: new Date(item.createdAt).toLocaleDateString("pt-BR"),
-            cuidadora: Boolean(item.aluno?.necessidadesEspeciais),
-            alunoData: item.aluno,
-            responsavelData: item.responsavel,
-            turmaData: item.turma,
-          }));
+          await cacheMatriculasFromServer();
         }
       } catch (error) {
         console.warn("⚠️ Erro ao buscar do servidor, usando cache", error);
       }
 
-      // Offline ou erro - buscar do cache
-      console.log("📴 Offline ou erro - usando cache local");
-      const cachedData = await getMatriculasFromCache();
+      // Sempre retornar todos os dados locais (synced + pending)
+      console.log("📂 Buscando dados locais...");
+      const localData = await getAllMatriculas();
 
-      return cachedData.map((item: any) => ({
+      return localData.map((item: any) => ({
         id: item.id,
+        idGlobal: item.idGlobal, // Incluir ID global
         protocolo: item.protocoloLocal,
         aluno: item.aluno?.nome || "Sem nome",
         responsavel: item.responsavel?.nome || "Sem nome",
@@ -175,6 +163,7 @@ export default function MatriculasPage() {
           ? new Date(item.createdAt).toLocaleDateString("pt-BR")
           : "N/A",
         cuidadora: Boolean(item.aluno?.necessidadesEspeciais),
+        sync_status: item.sync_status,
         alunoData: item.aluno,
         responsavelData: item.responsavel,
         turmaData: item.turma,

@@ -150,7 +150,9 @@ export class SyncRepository {
               }
 
               // Gerar protocolo definitivo
-              const protocolo = this.generateProtocolo();
+              const protocolo = await this.generateProtocolo(
+                item.data.aluno?.etapa || "bercario"
+              );
 
               // Remover campos que o servidor calcula para evitar override
               const {
@@ -304,13 +306,22 @@ export class SyncRepository {
     return crypto.randomUUID();
   }
 
-  private generateProtocolo(): string {
-    const ano = new Date().getFullYear();
-    const timestamp = Date.now();
-    const random = Math.floor(Math.random() * 1000)
-      .toString()
-      .padStart(3, "0");
-    return `MAT-${ano}-${timestamp}-${random}`;
+  private async generateProtocolo(etapa: string): Promise<string> {
+    const year = new Date().getFullYear();
+
+    const existingProtocols = await db
+      .select({ protocoloLocal: matricula.protocoloLocal })
+      .from(matricula)
+      .where(sql`${matricula.protocoloLocal} LIKE ${`% - ${year} - %`}`)
+      .orderBy(sql`${matricula.protocoloLocal} DESC`);
+
+    const protocolosExistentes = existingProtocols.map((p) => p.protocoloLocal);
+
+    // Usar o novo gerador de protocolos
+    const { ProtocoloGenerator } = await import(
+      "../utils/protocol-generator.js"
+    );
+    return ProtocoloGenerator.generateNext(etapa, protocolosExistentes, year);
   }
 }
 

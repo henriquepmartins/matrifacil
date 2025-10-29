@@ -1,4 +1,5 @@
 import { db } from "../db";
+import { ProtocoloGenerator } from "@/lib/utils/protocol-generator";
 
 export interface PreMatriculaData {
   aluno: {
@@ -31,7 +32,7 @@ export async function savePreMatriculaOffline(data: PreMatriculaData) {
   const matriculaId = crypto.randomUUID();
 
   const now = new Date();
-  const protocoloLocal = `LOCAL-${Date.now()}`;
+  const protocoloLocal = ProtocoloGenerator.generate(data.aluno.etapa);
 
   console.log("💾 Salvando pré-matrícula offline...", {
     alunoId,
@@ -125,7 +126,43 @@ export async function savePreMatriculaOffline(data: PreMatriculaData) {
 
   console.log("🎉 Pré-matrícula salva offline com sucesso!");
 
-  return { matriculaId, protocoloLocal, alunoId, responsavelId };
+  // Retornar os dados completos da pré-matrícula criada para atualização imediata do cache
+  const preMatriculaCriada = {
+    id: matriculaId,
+    protocoloLocal,
+    status: "pre" as const,
+    observacoes: data.observacoes,
+    createdAt: now,
+    updatedAt: now,
+    sync_status: "pending" as const,
+    aluno: {
+      id: alunoId,
+      nome: data.aluno.nome,
+      dataNascimento: data.aluno.dataNascimento,
+      etapa: data.aluno.etapa,
+      necessidadesEspeciais: data.aluno.necessidadesEspeciais,
+      observacoes: data.aluno.observacoes,
+    },
+    responsavel: {
+      id: responsavelId,
+      nome: data.responsavel.nome,
+      cpf: data.responsavel.cpf,
+      telefone: data.responsavel.telefone,
+      endereco: data.responsavel.endereco,
+      bairro: data.responsavel.bairro,
+      email: data.responsavel.email,
+      parentesco: data.responsavel.parentesco,
+      autorizadoRetirada: data.responsavel.autorizadoRetirada,
+    },
+  };
+
+  return {
+    matriculaId,
+    protocoloLocal,
+    alunoId,
+    responsavelId,
+    preMatriculaCriada,
+  };
 }
 
 /**

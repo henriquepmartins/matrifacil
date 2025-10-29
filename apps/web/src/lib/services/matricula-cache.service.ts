@@ -94,8 +94,10 @@ export async function cacheMatriculasFromServer() {
     console.log(`✅ ${matriculas.length} matrículas cacheadas no IndexedDB`);
     return matriculas;
   } catch (error) {
-    console.error("❌ Erro ao cachear matrículas:", error);
-    throw error;
+    console.warn(
+      "⚠️ Servidor offline ou erro de conexão, usando apenas cache local"
+    );
+    return getMatriculasFromCache();
   }
 }
 
@@ -130,4 +132,66 @@ export async function getMatriculasFromCache() {
   );
 
   return result;
+}
+
+/**
+ * Busca todas as matrículas (synced + pending) do cache local
+ */
+export async function getAllMatriculas() {
+  console.log("📂 Buscando TODAS as matrículas do cache local...");
+
+  // Buscar todas as matrículas
+  const matriculas = await db.matriculas.toArray();
+
+  console.log(`📦 ${matriculas.length} matrículas encontradas no cache`);
+
+  // Buscar dados relacionados e incluir sync_status
+  const result = await Promise.all(
+    matriculas.map(async (m) => {
+      const aluno = await db.alunos.get(m.alunoId);
+      const responsavel = await db.responsaveis.get(m.responsavelId);
+      const turma = m.turmaId ? await db.turmas.get(m.turmaId) : null;
+
+      return {
+        ...m,
+        aluno,
+        responsavel,
+        turma,
+        sync_status: m.sync_status, // Adicionar sync_status
+      };
+    })
+  );
+
+  console.log(
+    `✅ Dados relacionados carregados para ${result.length} matrículas`
+  );
+
+  return result;
+}
+
+/**
+ * Força a atualização do cache local (útil após operações offline)
+ */
+export async function refreshMatriculasCache() {
+  console.log("🔄 Forçando atualização do cache de matrículas...");
+
+  try {
+    if (typeof window !== "undefined" && navigator.onLine) {
+      console.log("🌐 Online - tentando atualizar do servidor...");
+      try {
+        await cacheMatriculasFromServer();
+        console.log("✅ Cache atualizado do servidor");
+      } catch (error) {
+        console.warn(
+          "⚠️ Erro ao atualizar do servidor, usando apenas cache local:",
+          error
+        );
+      }
+    }
+
+    return getAllMatriculas();
+  } catch (error) {
+    console.error("❌ Erro ao atualizar cache:", error);
+    throw error;
+  }
 }

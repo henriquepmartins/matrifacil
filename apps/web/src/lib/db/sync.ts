@@ -247,44 +247,135 @@ export async function cleanupSyncQueue(daysOld = 7): Promise<number> {
  * Obtém estatísticas da fila de sincronização
  */
 export async function getSyncQueueStats() {
-  // Buscar pendentes de todas as entidades
-  const [
-    syncQueuePending,
-    alunosPending,
-    responsaveisPending,
-    matriculasPending,
-    documentosPending,
-    pendenciasPending,
-  ] = await Promise.all([
-    db.syncQueue.where("synced").equals(0).count(),
-    db.alunos.where("sync_status").equals("pending").count(),
-    db.responsaveis.where("sync_status").equals("pending").count(),
-    db.matriculas.where("sync_status").equals("pending").count(),
-    db.documentos.where("sync_status").equals("pending").count(),
-    db.pendencias.where("sync_status").equals("pending").count(),
-  ]);
+  try {
+    // Verificar se o banco está aberto
+    if (db.isOpen() === false) {
+      console.warn("⚠️ Banco de dados não está aberto, tentando abrir...");
+      await db.open();
+    }
 
-  const total = syncQueuePending;
-  const pending =
-    syncQueuePending +
-    alunosPending +
-    responsaveisPending +
-    matriculasPending +
-    documentosPending +
-    pendenciasPending;
+    // Buscar pendentes de todas as entidades
+    const [
+      syncQueuePending,
+      alunosPending,
+      responsaveisPending,
+      matriculasPending,
+      documentosPending,
+      pendenciasPending,
+    ] = await Promise.all([
+      db.syncQueue.filter((item) => !item.synced).count(),
+      db.alunos.where("sync_status").equals("pending").count(),
+      db.responsaveis.where("sync_status").equals("pending").count(),
+      db.matriculas.where("sync_status").equals("pending").count(),
+      db.documentos.where("sync_status").equals("pending").count(),
+      db.pendencias.where("sync_status").equals("pending").count(),
+    ]);
 
-  // Buscar falhas
-  const allItems = await db.syncQueue.toArray();
-  const failed = allItems.filter(
-    (item) => !item.synced && item.retries >= MAX_RETRIES
-  ).length;
+    // Total de itens pendentes em todas as entidades
+    const pending =
+      syncQueuePending +
+      alunosPending +
+      responsaveisPending +
+      matriculasPending +
+      documentosPending +
+      pendenciasPending;
 
-  return {
-    total,
-    pending,
-    synced: total - pending,
-    failed,
-  };
+    console.log("📊 Pendentes por entidade:", {
+      syncQueuePending,
+      alunosPending,
+      responsaveisPending,
+      matriculasPending,
+      documentosPending,
+      pendenciasPending,
+      total: pending,
+    });
+
+    // Buscar itens sincronizados
+    const [
+      alunosSynced,
+      responsaveisSynced,
+      matriculasSynced,
+      documentosSynced,
+      pendenciasSynced,
+    ] = await Promise.all([
+      db.alunos.where("sync_status").equals("synced").count(),
+      db.responsaveis.where("sync_status").equals("synced").count(),
+      db.matriculas.where("sync_status").equals("synced").count(),
+      db.documentos.where("sync_status").equals("synced").count(),
+      db.pendencias.where("sync_status").equals("synced").count(),
+    ]);
+
+    const synced =
+      alunosSynced +
+      responsaveisSynced +
+      matriculasSynced +
+      documentosSynced +
+      pendenciasSynced;
+
+    // Buscar falhas
+    const allItems = await db.syncQueue.toArray();
+    const failed = allItems.filter(
+      (item) => !item.synced && item.retries >= MAX_RETRIES
+    ).length;
+
+    return {
+      total: pending + synced,
+      pending,
+      synced,
+      failed,
+    };
+  } catch (error) {
+    console.error("❌ Erro ao obter estatísticas de sincronização:", error);
+
+    // Retornar valores padrão em caso de erro
+    return {
+      total: 0,
+      pending: 0,
+      synced: 0,
+      failed: 0,
+    };
+  }
+}
+
+/**
+ * Verifica e corrige problemas de inicialização do banco
+ */
+export async function ensureDatabaseReady(): Promise<void> {
+  try {
+    if (!db.isOpen()) {
+      console.log("🔄 Abrindo banco de dados...");
+      await db.open();
+    }
+
+    // Verificar se todas as tabelas existem
+    const tables = [
+      "users",
+      "sessions",
+      "syncQueue",
+      "syncMetadata",
+      "alunos",
+      "responsaveis",
+      "turmas",
+      "matriculas",
+      "documentos",
+      "pendencias",
+      "fileMarkers",
+    ];
+
+    for (const tableName of tables) {
+      try {
+        // Tentar acessar a tabela para verificar se existe
+        await (db as any)[tableName].count();
+      } catch (error) {
+        console.warn(`⚠️ Tabela ${tableName} não encontrada:`, error);
+      }
+    }
+
+    console.log("✅ Banco de dados verificado e pronto");
+  } catch (error) {
+    console.error("❌ Erro ao verificar banco de dados:", error);
+    throw error;
+  }
 }
 
 // setupAutoSync foi movido para SyncManager em sync-manager.ts

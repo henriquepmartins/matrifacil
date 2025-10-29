@@ -145,8 +145,22 @@ export default function NovaPreMatriculaPage() {
           `Pré-matrícula salva localmente! Protocolo: ${result.protocoloLocal}. Será sincronizada quando houver conexão.`,
           { duration: 5000 }
         );
-        // Invalidar query para atualizar tabela
-        queryClient.invalidateQueries({ queryKey: ["pre-matriculas"] });
+
+        // Atualizar o cache diretamente com os dados da pré-matrícula criada
+        if (result.preMatriculaCriada) {
+          console.log("🔄 Atualizando cache com nova pré-matrícula...");
+          queryClient.setQueryData(["pre-matriculas"], (oldData: any) => {
+            if (!oldData) return [result.preMatriculaCriada];
+            return [...oldData, result.preMatriculaCriada];
+          });
+        }
+
+        // Aguardar um pouco para garantir que o IndexedDB commitou
+        await new Promise((resolve) => setTimeout(resolve, 300));
+
+        // Invalidar query para garantir sincronização completa
+        await queryClient.invalidateQueries({ queryKey: ["pre-matriculas"] });
+
         router.push("/dashboard/pre-matriculas");
         return;
       }

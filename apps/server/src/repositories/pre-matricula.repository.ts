@@ -307,31 +307,28 @@ export class PreMatriculaRepository {
       .limit(1);
     return result || null;
   }
-  private async generateProtocolo(): Promise<string> {
+  private async generateProtocolo(etapa: string): Promise<string> {
     const year = new Date().getFullYear();
 
     const existingProtocols = await db
       .select({ protocoloLocal: matricula.protocoloLocal })
       .from(matricula)
-      .where(like(matricula.protocoloLocal, `PRE-${year}-%`))
+      .where(like(matricula.protocoloLocal, `% - ${year} - %`))
       .orderBy(desc(matricula.protocoloLocal));
 
-    let nextNumber = 1;
-    if (existingProtocols.length > 0) {
-      const lastProtocol = existingProtocols[0].protocoloLocal;
-      const match = lastProtocol.match(/PRE-\d{4}-(\d{3})/);
-      if (match) {
-        nextNumber = parseInt(match[1]) + 1;
-      }
-    }
+    const protocolosExistentes = existingProtocols.map((p) => p.protocoloLocal);
 
-    return `PRE-${year}-${nextNumber.toString().padStart(3, "0")}`;
+    // Usar o novo gerador de protocolos
+    const { ProtocoloGenerator } = await import(
+      "../utils/protocol-generator.js"
+    );
+    return ProtocoloGenerator.generateNext(etapa, protocolosExistentes, year);
   }
 
   async createPreMatricula(
     data: CreatePreMatriculaData
   ): Promise<PreMatriculaWithDetails> {
-    const protocolo = await this.generateProtocolo();
+    const protocolo = await this.generateProtocolo(data.aluno.etapa);
 
     const alunoId = uuidv4();
     const [newAluno] = await db
@@ -363,11 +360,17 @@ export class PreMatriculaRepository {
     try {
       const result = await db.execute(sql`
         INSERT INTO responsavel (
-          id, id_global, nome, cpf, telefone, endereco, bairro, email
+          id, id_global, nome, cpf, telefone, endereco, bairro, email, parentesco, autorizado_retirada, created_at, updated_at
         ) VALUES (
-          ${responsavelId}, ${idGlobal}, ${data.responsavel.nome}, ${data.responsavel.cpf}, 
-          ${data.responsavel.telefone}, ${data.responsavel.endereco}, ${data.responsavel.bairro}, 
-          ${data.responsavel.email}
+          ${responsavelId}, ${idGlobal}, ${data.responsavel.nome}, ${
+        data.responsavel.cpf
+      }, 
+          ${data.responsavel.telefone}, ${data.responsavel.endereco}, ${
+        data.responsavel.bairro
+      }, 
+          ${data.responsavel.email}, ${data.responsavel.parentesco || "pai"}, ${
+        data.responsavel.autorizadoRetirada ?? true
+      }, NOW(), NOW()
         ) RETURNING id, nome, cpf
       `);
 

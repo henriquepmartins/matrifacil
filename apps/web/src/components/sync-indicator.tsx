@@ -11,9 +11,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useOfflineSync } from "@/lib/hooks/useOfflineSync";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 export default function SyncIndicator() {
   const { isOnline, isSyncing, stats, sync } = useOfflineSync();
+  const queryClient = useQueryClient();
 
   const getStatusIcon = () => {
     if (isSyncing) return <RefreshCw className="h-4 w-4 animate-spin" />;
@@ -34,6 +37,41 @@ export default function SyncIndicator() {
   };
 
   const hasPendingItems = stats.pending > 0;
+
+  console.log("📊 SyncIndicator stats:", stats, "hasPending:", hasPendingItems);
+
+  const handleSync = async () => {
+    try {
+      console.log("🔄 Iniciando sincronização manual...");
+      const result = await sync();
+      console.log("✅ Resultado da sincronização:", result);
+
+      if (result?.success > 0) {
+        toast.success(`${result.success} item(s) sincronizado(s) com sucesso!`);
+
+        // Aguardar um pouco para garantir que IndexedDB foi atualizado
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        // Invalidar queries e forçar refetch
+        console.log("🔄 Invalidando queries...");
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: ["pre-matriculas"],
+            refetchType: "all",
+          }),
+          queryClient.invalidateQueries({
+            queryKey: ["matriculas"],
+            refetchType: "all",
+          }),
+        ]);
+
+        console.log("✅ Queries invalidadas e refetchadas");
+      }
+    } catch (err: any) {
+      console.error("❌ Erro na sincronização:", err);
+      toast.error(err?.message || "Erro ao sincronizar");
+    }
+  };
 
   return (
     <div className="flex items-center gap-2">
@@ -61,7 +99,7 @@ export default function SyncIndicator() {
         <Button
           variant="outline"
           size="sm"
-          onClick={sync}
+          onClick={handleSync}
           disabled={isSyncing || !hasPendingItems}
           className="h-8"
         >
