@@ -120,6 +120,8 @@ export async function getMatriculasFromCache() {
 
       return {
         ...m,
+        id: m.idGlobal || m.id, // Priorizar ID global quando sincronizado
+        idLocal: m.id, // Manter referência ao ID local
         aluno,
         responsavel,
         turma,
@@ -154,6 +156,8 @@ export async function getAllMatriculas() {
 
       return {
         ...m,
+        id: m.idGlobal || m.id, // Priorizar ID global quando sincronizado
+        idLocal: m.id, // Manter referência ao ID local
         aluno,
         responsavel,
         turma,

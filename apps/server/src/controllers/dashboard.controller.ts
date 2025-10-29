@@ -580,3 +580,262 @@ export const buscarAlunos = async (req: Request, res: Response) => {
     }
   }
 };
+
+export const getTurmaDetalhes = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "ID da turma é obrigatório",
+      });
+    }
+
+    console.log("🔍 Buscando detalhes da turma:", id);
+
+    // Buscar informações da turma
+    const turmaResult = await db.execute(sql`
+      SELECT 
+        id, 
+        id_global as "idGlobal", 
+        nome, 
+        etapa, 
+        turno, 
+        capacidade, 
+        vagas_disponiveis as "vagasDisponiveis", 
+        ano_letivo as "anoLetivo", 
+        ativa, 
+        created_at as "createdAt", 
+        updated_at as "updatedAt"
+      FROM turma
+      WHERE id = ${id}
+    `);
+
+    if (!turmaResult.rows || turmaResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Turma não encontrada",
+      });
+    }
+
+    const turma = turmaResult.rows[0];
+
+    // Buscar alunos matriculados na turma com informações completas
+    const alunosResult = await db.execute(sql`
+      SELECT 
+        m.id as "matriculaId",
+        m.protocolo_local as "protocoloLocal",
+        m.status as "statusMatricula",
+        m.data_matricula as "dataMatricula",
+        a.id as "alunoId",
+        a.nome as "alunoNome",
+        a.data_nascimento as "dataNascimento",
+        a.etapa as "etapa",
+        a.necessidades_especiais as "necessidadesEspeciais",
+        a.observacoes as "observacoesAluno",
+        r.id as "responsavelId",
+        r.nome as "responsavelNome",
+        r.telefone as "responsavelTelefone",
+        r.cpf as "responsavelCpf",
+        r.endereco as "responsavelEndereco",
+        r.bairro as "responsavelBairro",
+        r.email as "responsavelEmail",
+        r.parentesco as "responsavelParentesco",
+        r.autorizado_retirada as "responsavelAutorizadoRetirada"
+      FROM matricula m
+      INNER JOIN aluno a ON m.aluno_id = a.id
+      INNER JOIN responsavel r ON m.responsavel_id = r.id
+      WHERE m.turma_id = ${id}
+      ORDER BY a.nome
+    `);
+
+    const alunos = alunosResult.rows || [];
+
+    // Calcular estatísticas
+    const vagasOcupadas = turma.capacidade - turma.vagasDisponiveis;
+    const taxaOcupacao = turma.capacidade > 0 
+      ? ((vagasOcupadas / turma.capacidade) * 100).toFixed(1)
+      : 0;
+
+    const alunosComNecessidadesEspeciais = alunos.filter(
+      (a: any) => a.necessidadesEspeciais
+    ).length;
+
+    const estatisticas = {
+      totalAlunos: alunos.length,
+      vagasOcupadas,
+      vagasDisponiveis: turma.vagasDisponiveis,
+      capacidadeTotal: turma.capacidade,
+      taxaOcupacao: parseFloat(taxaOcupacao as string),
+      alunosComNecessidadesEspeciais,
+      percentualNecessidadesEspeciais: alunos.length > 0
+        ? ((alunosComNecessidadesEspeciais / alunos.length) * 100).toFixed(1)
+        : 0,
+    };
+
+    console.log(`✅ Turma encontrada com ${alunos.length} alunos`);
+
+    res.json({
+      success: true,
+      data: {
+        turma,
+        alunos,
+        estatisticas,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Erro ao buscar detalhes da turma:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao buscar detalhes da turma",
+      error: error instanceof Error ? error.message : "Erro desconhecido",
+    });
+  }
+};
+
+export const transferirAluno = async (req: Request, res: Response) => {
+  try {
+    const { matriculaId, turmaOrigemId, turmaDestinoId } = req.body;
+
+    if (!matriculaId || !turmaOrigemId || !turmaDestinoId) {
+      return res.status(400).json({
+        success: false,
+        message: "matriculaId, turmaOrigemId e turmaDestinoId são obrigatórios",
+      });
+    }
+
+    console.log("🔄 Transferindo aluno:", {
+      matriculaId,
+      turmaOrigemId,
+      turmaDestinoId,
+    });
+
+    // Buscar informações das turmas
+    const turmasResult = await db.execute(sql`
+      SELECT 
+        id, 
+        nome, 
+        etapa, 
+        turno, 
+        capacidade, 
+        vagas_disponiveis as "vagasDisponiveis",
+        ativa
+      FROM turma
+      WHERE id IN (${turmaOrigemId}, ${turmaDestinoId})
+    `);
+
+    if (!turmasResult.rows || turmasResult.rows.length !== 2) {
+      return res.status(404).json({
+        success: false,
+        message: "Uma ou ambas as turmas não foram encontradas",
+      });
+    }
+
+    const turmaOrigem = turmasResult.rows.find((t: any) => t.id === turmaOrigemId);
+    const turmaDestino = turmasResult.rows.find((t: any) => t.id === turmaDestinoId);
+
+    if (!turmaOrigem || !turmaDestino) {
+      return res.status(404).json({
+        success: false,
+        message: "Turma de origem ou destino não encontrada",
+      });
+    }
+
+    // Validação: turmas devem ser da mesma etapa
+    if (turmaOrigem.etapa !== turmaDestino.etapa) {
+      return res.status(400).json({
+        success: false,
+        message: `Não é possível transferir aluno entre turmas de etapas diferentes. Origem: ${turmaOrigem.etapa}, Destino: ${turmaDestino.etapa}`,
+      });
+    }
+
+    // Validação: turma destino deve estar ativa
+    if (!turmaDestino.ativa) {
+      return res.status(400).json({
+        success: false,
+        message: "Turma de destino não está ativa",
+      });
+    }
+
+    // Validação: turma destino deve ter vagas disponíveis
+    if (turmaDestino.vagasDisponiveis <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Turma de destino não possui vagas disponíveis",
+      });
+    }
+
+    // Verificar se a matrícula existe e está na turma origem
+    const matriculaResult = await db.execute(sql`
+      SELECT id, turma_id as "turmaId", aluno_id as "alunoId"
+      FROM matricula
+      WHERE id = ${matriculaId}
+    `);
+
+    if (!matriculaResult.rows || matriculaResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Matrícula não encontrada",
+      });
+    }
+
+    const matricula = matriculaResult.rows[0] as any;
+
+    if (matricula.turmaId !== turmaOrigemId) {
+      return res.status(400).json({
+        success: false,
+        message: "A matrícula não pertence à turma de origem informada",
+      });
+    }
+
+    // Executar transferência em uma transação
+    await db.transaction(async (tx) => {
+      // Atualizar matrícula para nova turma
+      await tx.execute(sql`
+        UPDATE matricula
+        SET turma_id = ${turmaDestinoId}, updated_at = NOW()
+        WHERE id = ${matriculaId}
+      `);
+
+      // Incrementar vaga na turma origem
+      await tx.execute(sql`
+        UPDATE turma
+        SET vagas_disponiveis = vagas_disponiveis + 1, updated_at = NOW()
+        WHERE id = ${turmaOrigemId}
+      `);
+
+      // Decrementar vaga na turma destino
+      await tx.execute(sql`
+        UPDATE turma
+        SET vagas_disponiveis = vagas_disponiveis - 1, updated_at = NOW()
+        WHERE id = ${turmaDestinoId}
+      `);
+    });
+
+    console.log("✅ Transferência realizada com sucesso");
+
+    res.json({
+      success: true,
+      message: `Aluno transferido com sucesso de "${turmaOrigem.nome}" para "${turmaDestino.nome}"`,
+      data: {
+        matriculaId,
+        turmaOrigem: {
+          id: turmaOrigem.id,
+          nome: turmaOrigem.nome,
+        },
+        turmaDestino: {
+          id: turmaDestino.id,
+          nome: turmaDestino.nome,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("❌ Erro ao transferir aluno:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao transferir aluno",
+      error: error instanceof Error ? error.message : "Erro desconhecido",
+    });
+  }
+};

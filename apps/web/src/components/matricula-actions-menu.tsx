@@ -200,6 +200,8 @@ export default function MatriculaActionsMenu({
     onSuccess: () => {
       toast.success("Matrícula atualizada com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["matriculas"] });
+      queryClient.invalidateQueries({ queryKey: ["turma-detalhes"] });
+      queryClient.invalidateQueries({ queryKey: ["turmas"] });
       setIsEditDialogOpen(false);
     },
     onError: (error) => {

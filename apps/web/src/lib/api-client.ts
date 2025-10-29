@@ -200,3 +200,91 @@ export async function checkHealth(): Promise<{
 }> {
   return apiClient.get("/health");
 }
+
+// ============== Turmas API ==============
+
+export interface TurmaDetalhes {
+  turma: {
+    id: string;
+    idGlobal: string;
+    nome: string;
+    etapa: string;
+    turno: string;
+    capacidade: number;
+    vagasDisponiveis: number;
+    anoLetivo: string;
+    ativa: boolean;
+    createdAt: string;
+    updatedAt: string;
+  };
+  alunos: Array<{
+    matriculaId: string;
+    protocoloLocal: string;
+    statusMatricula: string;
+    dataMatricula: string | null;
+    alunoId: string;
+    alunoNome: string;
+    dataNascimento: string;
+    etapa: string;
+    necessidadesEspeciais: boolean;
+    observacoesAluno: string | null;
+    responsavelId: string;
+    responsavelNome: string;
+    responsavelTelefone: string;
+    responsavelCpf: string;
+    responsavelEndereco: string | null;
+    responsavelBairro: string | null;
+    responsavelEmail: string | null;
+    responsavelParentesco: string | null;
+    responsavelAutorizadoRetirada: boolean | null;
+  }>;
+  estatisticas: {
+    totalAlunos: number;
+    vagasOcupadas: number;
+    vagasDisponiveis: number;
+    capacidadeTotal: number;
+    taxaOcupacao: number;
+    alunosComNecessidadesEspeciais: number;
+    percentualNecessidadesEspeciais: string;
+  };
+}
+
+export interface TransferirAlunoRequest {
+  matriculaId: string;
+  turmaOrigemId: string;
+  turmaDestinoId: string;
+}
+
+export interface TransferirAlunoResponse {
+  success: boolean;
+  message: string;
+  data: {
+    matriculaId: string;
+    turmaOrigem: {
+      id: string;
+      nome: string;
+    };
+    turmaDestino: {
+      id: string;
+      nome: string;
+    };
+  };
+}
+
+/**
+ * Busca detalhes completos de uma turma incluindo alunos e estatísticas
+ */
+export async function getTurmaDetalhes(
+  turmaId: string
+): Promise<{ success: boolean; data: TurmaDetalhes }> {
+  return apiClient.get(`/api/turmas/${turmaId}/detalhes`);
+}
+
+/**
+ * Transfere um aluno de uma turma para outra
+ */
+export async function transferirAluno(
+  request: TransferirAlunoRequest
+): Promise<TransferirAlunoResponse> {
+  return apiClient.post("/api/turmas/transferir-aluno", request);
+}

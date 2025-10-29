@@ -6,6 +6,8 @@ import {
   buscarAlunos,
   deleteMatricula,
   getTurmas,
+  getTurmaDetalhes,
+  transferirAluno,
 } from "../controllers/dashboard.controller.js";
 
 const router = Router();
@@ -47,6 +49,10 @@ router.post(
 // Rotas auxiliares (mantendo do dashboard.controller.ts por enquanto)
 router.delete("/api/matriculas/:id", deleteMatricula);
 router.get("/api/matriculas/buscar-alunos", buscarAlunos);
+
+// Turmas
 router.get("/api/turmas", getTurmas);
+router.get("/api/turmas/:id/detalhes", getTurmaDetalhes);
+router.post("/api/turmas/transferir-aluno", transferirAluno);
 
 export default router;

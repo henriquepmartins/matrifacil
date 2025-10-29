@@ -15,6 +15,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { usePermissions, type Permissions } from "@/lib/hooks/usePermissions";
 
 import {
   DropdownMenu,
@@ -37,7 +38,14 @@ import {
 } from "@/components/ui/sidebar";
 
 // Menu items
-const items = [
+interface MenuItem {
+  title: string;
+  url: string;
+  icon: any;
+  permission?: keyof Permissions;
+}
+
+const items: MenuItem[] = [
   {
     title: "Dashboard",
     url: "/dashboard",
@@ -62,17 +70,26 @@ const items = [
     title: "Relatórios",
     url: "/dashboard/relatorios",
     icon: IconChartBar,
+    permission: "canAccessRelatorios",
   },
   {
     title: "Configurações",
     url: "/dashboard/configuracoes",
     icon: IconSettings,
+    permission: "canAccessConfiguracoes",
   },
 ];
 
 export function AppSidebar() {
   const pathname = usePathname();
   const { user, isLoading, signOut } = useAuth();
+  const permissions = usePermissions();
+
+  // Filtrar itens baseado em permissões
+  const filteredItems = items.filter((item) => {
+    if (!item.permission) return true;
+    return permissions[item.permission];
+  });
 
   // Função para obter as iniciais do nome do usuário
   const getUserInitials = (name: string) => {
@@ -131,7 +148,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Navegação</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
+              {filteredItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
