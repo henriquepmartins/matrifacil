@@ -1,9 +1,12 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import dns from "node:dns";
+import { promisify } from "util";
 
 // Força resolução IPv4 primeiro para evitar ENETUNREACH em ambientes sem IPv6 (Railway)
 dns.setDefaultResultOrder("ipv4first");
+
+const lookup = promisify(dns.lookup);
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -15,9 +18,39 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
+// Função para resolver hostname para IPv4 e modificar a connection string
+async function getIPv4ConnectionString(connectionString: string): Promise<string> {
+  try {
+    const url = new URL(connectionString);
+    const hostname = url.hostname;
+    
+    // Se já for um IP, retorna como está
+    if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+      return connectionString;
+    }
+    
+    // Resolve para IPv4
+    const { address } = await lookup(hostname, { family: 4 });
+    url.hostname = address;
+    return url.toString();
+  } catch (error) {
+    console.warn("⚠️ Erro ao resolver hostname para IPv4, usando connectionString original:", error);
+    return connectionString;
+  }
+}
+
+// Resolve hostname para IPv4 antes de criar o Pool (top-level await suportado em ESM)
+let resolvedConnectionString: string;
+try {
+  resolvedConnectionString = await getIPv4ConnectionString(process.env.DATABASE_URL);
+} catch (error) {
+  console.warn("⚠️ Erro ao resolver hostname, usando connectionString original:", error);
+  resolvedConnectionString = process.env.DATABASE_URL;
+}
+
 // Configuração específica para Supabase com fallback para IPv4
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: resolvedConnectionString,
   ssl: {
     rejectUnauthorized: false,
   },
