@@ -1,3 +1,8 @@
+import dns from "node:dns";
+
+// Força resolução IPv4 primeiro para evitar ENETUNREACH em ambientes sem IPv6 (Railway)
+dns.setDefaultResultOrder("ipv4first");
+
 import { db } from "@matrifacil-/db/index.js";
 import { sql } from "drizzle-orm";
 
