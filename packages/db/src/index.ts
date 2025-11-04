@@ -1,5 +1,9 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import dns from "node:dns";
+
+// Força resolução IPv4 primeiro para evitar ENETUNREACH em ambientes sem IPv6 (Railway)
+dns.setDefaultResultOrder("ipv4first");
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
