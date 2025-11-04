@@ -1,6 +1,7 @@
 import dns from "node:dns";
 
 // Força resolução IPv4 primeiro para evitar ENETUNREACH em ambientes sem IPv6 (Railway)
+// Esta configuração deve ser feita ANTES de qualquer importação que use o banco de dados
 dns.setDefaultResultOrder("ipv4first");
 
 import { db } from "@matrifacil-/db/index.js";

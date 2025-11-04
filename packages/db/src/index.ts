@@ -21,6 +21,8 @@ const pool = new Pool({
   ssl: {
     rejectUnauthorized: false,
   },
+  // Força uso de IPv4 apenas (Railway não suporta IPv6 adequadamente)
+  family: 4,
   // Configurações de timeout e retry
   connectionTimeoutMillis: 60000,
   idleTimeoutMillis: 30000,
