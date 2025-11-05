@@ -1,5 +1,6 @@
 import { db } from "../db/index";
 import type { BatchItem } from "./batch-builder";
+import type { CachedMatricula } from "../db/index";
 
 export interface SyncMapping {
   entity: string;
@@ -72,7 +73,7 @@ export async function reconcileData(mappings: SyncMapping[]): Promise<void> {
         
         // Debug: Verificar se o update foi bem-sucedido
         if (entity === "matricula") {
-          const verificado = await store.get(id_local);
+          const verificado = await store.get(id_local) as CachedMatricula | undefined;
           console.log(`🔍 Verificação pós-update:`, {
             id_local,
             id_global,
