@@ -34,33 +34,52 @@ function convertToPoolerIfSupabase(connectionString: string): string {
       return connectionString;
     }
     
-    // Converte conexão direta para pooler do Supabase
-    // Formato: db.xxxxx.supabase.co -> aws-0-[REGION].pooler.supabase.com
-    // Extrai project ref do hostname original
-    const match = hostname.match(/db\.([^.]+)\.supabase\.co/);
-    if (match) {
-      const projectRef = match[1];
-      
-      // Usa pooler na porta 5432 (session mode - suporta prepared statements do Drizzle)
-      // Transaction mode (porta 6543) não suporta prepared statements
-      // Tenta usar a região do ambiente ou usa us-east-1 como padrão
-      const region = process.env.SUPABASE_REGION || "us-east-1";
-      
-      url.hostname = `aws-0-${region}.pooler.supabase.com`;
-      url.port = "5432";
-      // Modifica o user para incluir project ref: postgres.project-ref
-      const username = url.username;
-      if (username === "postgres") {
-        url.username = `postgres.${projectRef}`;
+    // Extrai project ref do SUPABASE_URL (mais confiável que do DATABASE_URL)
+    // O SUPABASE_URL tem o formato: https://xxxxx.supabase.co
+    let projectRef: string | null = null;
+    
+    if (process.env.SUPABASE_URL) {
+      try {
+        const supabaseUrl = new URL(process.env.SUPABASE_URL);
+        const supabaseMatch = supabaseUrl.hostname.match(/^([^.]+)\.supabase\.co$/);
+        if (supabaseMatch) {
+          projectRef = supabaseMatch[1];
+        }
+      } catch (e) {
+        console.warn("⚠️ Erro ao extrair project ref do SUPABASE_URL:", e);
       }
-      console.log(`✅ Convertendo para connection pooler do Supabase (região: ${region}, porta: 5432 - session mode)`);
-      console.log(`   Session mode suporta prepared statements do Drizzle ORM`);
-      console.log(`   Se a conexão falhar, defina SUPABASE_REGION no .env com a região correta do seu projeto`);
-      console.log(`   Exemplo: SUPABASE_REGION=us-west-1 ou SUPABASE_REGION=eu-west-1`);
-      return url.toString();
     }
     
-    return connectionString;
+    // Se não conseguiu extrair do SUPABASE_URL, tenta do hostname do DATABASE_URL
+    if (!projectRef) {
+      const match = hostname.match(/db\.([^.]+)\.supabase\.co/);
+      if (match) {
+        projectRef = match[1];
+      }
+    }
+    
+    if (!projectRef) {
+      console.warn("⚠️ Não foi possível extrair project ref do Supabase, usando connectionString original");
+      return connectionString;
+    }
+    
+    // Usa pooler na porta 5432 (session mode - suporta prepared statements do Drizzle)
+    // Transaction mode (porta 6543) não suporta prepared statements
+    // Tenta usar a região do ambiente ou usa us-east-1 como padrão
+    const region = process.env.SUPABASE_REGION || "us-east-1";
+    
+    url.hostname = `aws-0-${region}.pooler.supabase.com`;
+    url.port = "5432";
+    // Modifica o user para incluir project ref: postgres.project-ref
+    const username = url.username;
+    if (username === "postgres") {
+      url.username = `postgres.${projectRef}`;
+    }
+    console.log(`✅ Convertendo para connection pooler do Supabase (project ref: ${projectRef}, região: ${region}, porta: 5432 - session mode)`);
+    console.log(`   Session mode suporta prepared statements do Drizzle ORM`);
+    console.log(`   Se a conexão falhar, defina SUPABASE_REGION no .env com a região correta do seu projeto`);
+    console.log(`   Exemplo: SUPABASE_REGION=us-west-1 ou SUPABASE_REGION=eu-west-1`);
+    return url.toString();
   } catch (error) {
     console.warn("⚠️ Erro ao converter para pooler, usando connectionString original:", error);
     return connectionString;
