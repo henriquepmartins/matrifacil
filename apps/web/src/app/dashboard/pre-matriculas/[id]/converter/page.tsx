@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,8 +18,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
-import { API_URL } from "@/lib/api-client";
+import { API_URL, apiClient } from "@/lib/api-client";
 import { toast } from "sonner";
+import { db } from "@/lib/db";
+import { syncPendingOperations } from "@/lib/db/sync";
+import { isOnline } from "@/lib/db/sync";
 
 type PreDetalhe = {
   id: string;
@@ -60,16 +63,93 @@ export default function ConverterPreMatriculaPage() {
   const [observacoes, setObservacoes] = useState<string>("");
   const [docsSelecionados, setDocsSelecionados] = useState<string[]>([]);
 
-  const { data: pre, isLoading: loadingPre } = useQuery({
+  const { data: pre, isLoading: loadingPre, refetch: refetchPre } = useQuery({
     queryKey: ["pre-matricula", preId],
     queryFn: async (): Promise<PreDetalhe | null> => {
       if (!preId) return null;
-      const res = await fetch(
-        `${API_URL}/api/pre-matriculas/${preId}`
-      );
-      if (!res.ok) return null;
-      const json = await res.json();
-      return json.data as PreDetalhe;
+      
+      // Primeiro, verificar no IndexedDB se a pré-matrícula existe localmente
+      const localMatricula = await db.matriculas.get(preId);
+      
+      if (localMatricula && localMatricula.sync_status === "pending") {
+        // Pré-matrícula existe localmente mas não foi sincronizada
+        // Buscar dados completos do IndexedDB
+        const aluno = await db.alunos.get(localMatricula.alunoId);
+        const responsavel = await db.responsaveis.get(localMatricula.responsavelId);
+        
+        if (aluno && responsavel) {
+          return {
+            id: localMatricula.id,
+            protocoloLocal: localMatricula.protocoloLocal || "",
+            aluno: {
+              nome: aluno.nome,
+              etapa: aluno.etapa,
+              necessidadesEspeciais: aluno.necessidadesEspeciais || false,
+            },
+            responsavel: {
+              nome: responsavel.nome,
+            },
+            createdAt: localMatricula.createdAt?.toISOString() || new Date().toISOString(),
+          };
+        }
+      }
+      
+      // Tentar buscar do servidor
+      try {
+        const res = await fetch(
+          `${API_URL}/api/pre-matriculas/${preId}`
+        );
+        if (!res.ok) {
+          // Se não encontrou no servidor e não está no IndexedDB, retornar null
+          if (localMatricula) {
+            // Existe localmente mas não no servidor - precisa sincronizar
+            const aluno = await db.alunos.get(localMatricula.alunoId);
+            const responsavel = await db.responsaveis.get(localMatricula.responsavelId);
+            
+            if (aluno && responsavel) {
+              return {
+                id: localMatricula.id,
+                protocoloLocal: localMatricula.protocoloLocal || "",
+                aluno: {
+                  nome: aluno.nome,
+                  etapa: aluno.etapa,
+                  necessidadesEspeciais: aluno.necessidadesEspeciais || false,
+                },
+                responsavel: {
+                  nome: responsavel.nome,
+                },
+                createdAt: localMatricula.createdAt?.toISOString() || new Date().toISOString(),
+              };
+            }
+          }
+          return null;
+        }
+        const json = await res.json();
+        return json.data as PreDetalhe;
+      } catch (error) {
+        // Erro de rede - usar dados locais se disponíveis
+        if (localMatricula) {
+          const aluno = await db.alunos.get(localMatricula.alunoId);
+          const responsavel = await db.responsaveis.get(localMatricula.responsavelId);
+          
+          if (aluno && responsavel) {
+            return {
+              id: localMatricula.id,
+              protocoloLocal: localMatricula.protocoloLocal || "",
+              aluno: {
+                nome: aluno.nome,
+                etapa: aluno.etapa,
+                necessidadesEspeciais: aluno.necessidadesEspeciais || false,
+              },
+              responsavel: {
+                nome: responsavel.nome,
+              },
+              createdAt: localMatricula.createdAt?.toISOString() || new Date().toISOString(),
+            };
+          }
+        }
+        return null;
+      }
     },
     enabled: !!preId,
   });
@@ -92,24 +172,56 @@ export default function ConverterPreMatriculaPage() {
   const criarMatricula = useMutation({
     mutationFn: async () => {
       if (!preId) throw new Error("Pré-matrícula inválida");
-      const response = await fetch(
-        `${API_URL}/api/matriculas/from-pre/${preId}`,
+      if (!turmaId) throw new Error("Selecione uma turma");
+      
+      // Verificar se a pré-matrícula está pendente de sincronização
+      const localMatricula = await db.matriculas.get(preId);
+      let matriculaIdToUse = preId;
+      
+      if (localMatricula && localMatricula.sync_status === "pending") {
+        // Precisa sincronizar primeiro
+        if (!isOnline()) {
+          throw new Error("É necessário estar online para converter uma pré-matrícula. Por favor, aguarde a sincronização automática.");
+        }
+        
+        toast.info("Sincronizando pré-matrícula antes de converter...");
+        
+        // Sincronizar operações pendentes
+        const syncResult = await syncPendingOperations();
+        
+        if (syncResult.failed > 0) {
+          throw new Error("Erro ao sincronizar pré-matrícula. Tente novamente.");
+        }
+        
+        // Aguardar um pouco para garantir que a reconciliação foi feita
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        
+        // Buscar a matrícula atualizada para obter o ID global
+        const updatedMatricula = await db.matriculas.get(preId);
+        if (updatedMatricula?.idGlobal) {
+          matriculaIdToUse = updatedMatricula.idGlobal;
+        } else if (updatedMatricula?.sync_status === "synced") {
+          // Se foi sincronizada mas não tem idGlobal, usar o id local mesmo
+          // O servidor pode ter retornado o mesmo ID
+          matriculaIdToUse = preId;
+        }
+        
+        // Refetch para garantir que temos os dados atualizados
+        await refetchPre();
+      }
+      
+      // Usar a rota correta: /api/pre-matriculas/:id/converter
+      const response = await apiClient.post(
+        `/api/pre-matriculas/${matriculaIdToUse}/converter`,
         {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            turmaId: turmaId || null,
-            dataMatricula,
-            documentosIniciais: docsSelecionados.map((t) => ({ tipo: t })),
-            observacoes,
-          }),
+          turmaId: turmaId || null,
+          dataMatricula,
+          documentosIniciais: docsSelecionados.map((t) => ({ tipo: t })),
+          observacoes,
         }
       );
-      if (!response.ok) {
-        const e = await response.json().catch(() => ({}));
-        throw new Error(e.message || "Erro ao criar matrícula");
-      }
-      return response.json();
+      
+      return response;
     },
     onSuccess: () => {
       toast.success("Matrícula criada com sucesso!");
