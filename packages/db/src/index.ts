@@ -87,8 +87,7 @@ function convertToPoolerIfSupabase(connectionString: string): string {
 }
 
 // Função para resolver hostname para IPv4 e modificar a connection string
-// IMPORTANTE: Esta função só deve ser chamada para conexões que NÃO são Supabase
-// Para Supabase, sempre use convertToPoolerIfSupabase primeiro
+// IMPORTANTE: Esta função NÃO deve tentar usar pooler - apenas resolve DNS para IPv4
 async function getIPv4ConnectionString(connectionString: string): Promise<string> {
   try {
     const url = new URL(connectionString);
@@ -99,37 +98,20 @@ async function getIPv4ConnectionString(connectionString: string): Promise<string
       return connectionString;
     }
     
-    // Se for Supabase, não tenta resolver DNS - deve usar pooler
-    if (hostname.includes("supabase.co") && !hostname.includes("pooler")) {
-      console.warn("⚠️ Detectado Supabase sem pooler na resolução DNS - convertendo para pooler...");
-      return convertToPoolerIfSupabase(connectionString);
-    }
-    
-    // Tenta resolver para IPv4 com timeout
+    // Tenta resolver para IPv4
     try {
       const { address } = await lookup(hostname, { family: 4 });
       url.hostname = address;
       console.log(`✅ Resolvido ${hostname} para IPv4: ${address}`);
       return url.toString();
     } catch (dnsError: any) {
-      // Se falhar o DNS, tenta converter para pooler (Supabase) como fallback
-      if (hostname.includes("supabase.co") && !hostname.includes("pooler")) {
-        console.warn("⚠️ Erro ao resolver DNS, tentando converter para connection pooler...");
-        return convertToPoolerIfSupabase(connectionString);
-      }
-      throw dnsError;
+      console.warn(`⚠️ Erro ao resolver DNS para IPv4 (${hostname}):`, dnsError.message);
+      // Se falhar, retorna a connection string original
+      // O PostgreSQL pode tentar conectar mesmo sem resolução explícita
+      return connectionString;
     }
   } catch (error) {
-    // Se ainda falhar, tenta pooler como último recurso (se for Supabase)
-    const url = new URL(connectionString);
-    if (url.hostname.includes("supabase.co") && !url.hostname.includes("pooler")) {
-      const poolerString = convertToPoolerIfSupabase(connectionString);
-      if (poolerString !== connectionString) {
-        console.warn("⚠️ Usando connection pooler como fallback após erro de DNS");
-        return poolerString;
-      }
-    }
-    console.warn("⚠️ Erro ao resolver hostname para IPv4, usando connectionString original:", error);
+    console.warn("⚠️ Erro ao processar connection string para IPv4, usando original:", error);
     return connectionString;
   }
 }
