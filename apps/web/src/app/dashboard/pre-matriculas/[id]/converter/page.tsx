@@ -68,6 +68,21 @@ export default function ConverterPreMatriculaPage() {
     queryFn: async (): Promise<PreDetalhe | null> => {
       if (!preId) return null;
       
+      // Verificar se estamos no browser antes de acessar IndexedDB
+      if (typeof window === "undefined") {
+        // Durante SSR, apenas buscar do servidor
+        try {
+          const res = await fetch(
+            `${API_URL}/api/pre-matriculas/${preId}`
+          );
+          if (!res.ok) return null;
+          const json = await res.json();
+          return json.data as PreDetalhe;
+        } catch {
+          return null;
+        }
+      }
+      
       // Primeiro, verificar no IndexedDB se a pré-matrícula existe localmente
       const localMatricula = await db.matriculas.get(preId);
       
@@ -173,6 +188,11 @@ export default function ConverterPreMatriculaPage() {
     mutationFn: async () => {
       if (!preId) throw new Error("Pré-matrícula inválida");
       if (!turmaId) throw new Error("Selecione uma turma");
+      
+      // Verificar se estamos no browser antes de acessar IndexedDB
+      if (typeof window === "undefined") {
+        throw new Error("Esta operação só pode ser executada no navegador");
+      }
       
       // Verificar se a pré-matrícula está pendente de sincronização
       const localMatricula = await db.matriculas.get(preId);
