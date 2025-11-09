@@ -135,27 +135,37 @@ async function getIPv4ConnectionString(connectionString: string): Promise<string
 }
 
 // Resolve hostname para IPv4 antes de criar o Pool (top-level await suportado em ESM)
-// Para Supabase, usa pooler diretamente (mais confiável e evita problemas de DNS)
-// IMPORTANTE: Sempre converte para pooler ANTES de tentar resolver DNS para evitar problemas com IPv6 no Railway
+// Para Supabase, tenta usar pooler primeiro, mas se falhar, usa conexão direta com IPv4
+// IMPORTANTE: Railway não suporta IPv6, então sempre força IPv4
 let resolvedConnectionString: string;
 try {
   const originalUrl = process.env.DATABASE_URL;
   const url = new URL(originalUrl);
   const disablePooler = String(process.env.SUPABASE_DISABLE_POOLER || "false").toLowerCase() === "true";
   
+  // Se pooler está desabilitado explicitamente, usa conexão direta com IPv4
+  if (disablePooler) {
+    console.log("ℹ️  Pooler desabilitado - usando conexão direta com resolução IPv4");
+    resolvedConnectionString = await getIPv4ConnectionString(originalUrl);
+  }
   // Se já está usando pooler do Supabase, usa diretamente sem resolver DNS
-  if (!disablePooler && url.hostname.includes("pooler.supabase.com")) {
+  else if (url.hostname.includes("pooler.supabase.com")) {
     console.log("✅ Usando connection pooler do Supabase diretamente (sem resolução DNS)");
     resolvedConnectionString = originalUrl;
   } 
-  // Se for Supabase e não estiver usando pooler, converte imediatamente (ANTES de resolver DNS)
-  // Isso evita problemas com IPv6 no Railway
-  else if (!disablePooler && url.hostname.includes("supabase.co")) {
-    console.log("🔧 Detectado Supabase - convertendo para connection pooler (evita problemas de DNS/IPv6)...");
-    resolvedConnectionString = convertToPoolerIfSupabase(originalUrl);
-    // Se a conversão não mudou nada (não é Supabase válido), tenta resolver DNS
-    if (resolvedConnectionString === originalUrl) {
-      console.log("⚠️ Conversão para pooler não aplicada, tentando resolver DNS...");
+  // Se for Supabase e não estiver usando pooler, tenta pooler primeiro
+  // Se pooler não estiver disponível, usa conexão direta com IPv4
+  else if (url.hostname.includes("supabase.co")) {
+    console.log("🔧 Detectado Supabase - tentando connection pooler primeiro...");
+    const poolerString = convertToPoolerIfSupabase(originalUrl);
+    
+    // Se a conversão funcionou, usa pooler
+    if (poolerString !== originalUrl) {
+      console.log("✅ Pooler configurado, mas se falhar, tentará conexão direta");
+      resolvedConnectionString = poolerString;
+    } else {
+      // Se não conseguiu converter, usa conexão direta com IPv4
+      console.log("⚠️ Não foi possível configurar pooler, usando conexão direta com IPv4");
       resolvedConnectionString = await getIPv4ConnectionString(originalUrl);
     }
   } 
@@ -164,16 +174,13 @@ try {
     resolvedConnectionString = await getIPv4ConnectionString(originalUrl);
   }
 } catch (error) {
-  console.warn("⚠️ Erro ao processar connection string, tentando pooler como fallback...", error);
-  // Tenta pooler como último recurso
-  const disablePooler = String(process.env.SUPABASE_DISABLE_POOLER || "false").toLowerCase() === "true";
-  if (disablePooler) {
+  console.warn("⚠️ Erro ao processar connection string, usando conexão direta com IPv4...", error);
+  // Em caso de erro, tenta conexão direta com IPv4
+  try {
+    resolvedConnectionString = await getIPv4ConnectionString(process.env.DATABASE_URL);
+  } catch (fallbackError) {
+    console.error("❌ Erro crítico ao processar connection string:", fallbackError);
     resolvedConnectionString = process.env.DATABASE_URL;
-  } else {
-    const poolerString = convertToPoolerIfSupabase(process.env.DATABASE_URL);
-    resolvedConnectionString = poolerString !== process.env.DATABASE_URL 
-      ? poolerString 
-      : process.env.DATABASE_URL;
   }
 }
 
