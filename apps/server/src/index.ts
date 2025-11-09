@@ -8,6 +8,7 @@ import { closeQueues } from "./config/queue.config.js";
 async function startServer() {
   try {
     console.log("🚀 Iniciando servidor MatriFácil...\n");
+    console.log("📊 Pooler desabilitado - usando conexão direta com IPv4");
 
     await initializeDatabase();
 
