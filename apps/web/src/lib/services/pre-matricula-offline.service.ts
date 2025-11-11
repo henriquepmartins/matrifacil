@@ -1,5 +1,7 @@
 import { db } from "../db";
 import { ProtocoloGenerator } from "@/lib/utils/protocol-generator";
+import { syncPendingOperations } from "../db/sync";
+import { isOnline } from "../db/sync";
 
 export interface PreMatriculaData {
   aluno: {
@@ -125,6 +127,24 @@ export async function savePreMatriculaOffline(data: PreMatriculaData) {
   }
 
   console.log("🎉 Pré-matrícula salva offline com sucesso!");
+
+  // Tentar sincronizar automaticamente se estiver online
+  if (isOnline()) {
+    console.log("🔄 Tentando sincronizar automaticamente após salvar...");
+    try {
+      const syncResult = await syncPendingOperations();
+      if (syncResult.success > 0) {
+        console.log(`✅ ${syncResult.success} item(s) sincronizado(s) automaticamente`);
+      } else if (syncResult.failed > 0) {
+        console.warn(`⚠️ ${syncResult.failed} item(s) falharam na sincronização automática`);
+      }
+    } catch (error: any) {
+      // Não bloquear o fluxo se a sincronização falhar
+      console.warn("⚠️ Erro na sincronização automática (não crítico):", error);
+    }
+  } else {
+    console.log("📡 Offline - pré-matrícula será sincronizada quando houver conexão");
+  }
 
   // Retornar os dados completos da pré-matrícula criada para atualização imediata do cache
   const preMatriculaCriada = {

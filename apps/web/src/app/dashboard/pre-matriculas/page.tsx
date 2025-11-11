@@ -25,6 +25,7 @@ import {
   getAllPreMatriculas,
   refreshPreMatriculasCache,
 } from "@/lib/services/pre-matricula-cache.service";
+import { syncPendingOperations } from "@/lib/db/sync";
 
 interface PreMatricula {
   id: string;
@@ -89,26 +90,29 @@ export default function PreMatriculasPage() {
     return () => window.removeEventListener("focus", handleFocus);
   }, [queryClient]);
 
-  // Sincronização automática quando online (DESABILITADA TEMPORARIAMENTE)
-  // useEffect(() => {
-  //   const interval = setInterval(async () => {
-  //     if (isOnline()) {
-  //       try {
-  //         const result = await syncPendingOperations();
-  //         if (result.success > 0) {
-  //           toast.success(
-  //             `${result.success} item(s) sincronizado(s) com sucesso!`
-  //           );
-  //           queryClient.invalidateQueries({ queryKey: ["pre-matriculas"] });
-  //         }
-  //       } catch (error) {
-  //         console.error("Erro na sincronização automática:", error);
-  //       }
-  //     }
-  //   }, 30000); // A cada 30 segundos
+  // Sincronização automática quando online
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (isOnline()) {
+        try {
+          const result = await syncPendingOperations();
+          if (result.success > 0) {
+            console.log(`✅ ${result.success} item(s) sincronizado(s) automaticamente`);
+            queryClient.invalidateQueries({ queryKey: ["pre-matriculas"] });
+            // Não mostrar toast para sincronização automática silenciosa
+            // toast.success(
+            //   `${result.success} item(s) sincronizado(s) com sucesso!`
+            // );
+          }
+        } catch (error) {
+          console.error("Erro na sincronização automática:", error);
+          // Não mostrar erro para o usuário em sincronização automática
+        }
+      }
+    }, 30000); // A cada 30 segundos
 
-  //   return () => clearInterval(interval);
-  // }, [queryClient]);
+    return () => clearInterval(interval);
+  }, [queryClient]);
 
   const {
     data: allPreMatriculas,
