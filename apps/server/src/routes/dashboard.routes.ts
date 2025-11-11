@@ -5,6 +5,7 @@ import { DashboardController } from "../adapters/web/dashboard.controller.js";
 import {
   buscarAlunos,
   deleteMatricula,
+  updateMatricula,
   getTurmas,
   getTurmaDetalhes,
   transferirAluno,
@@ -47,6 +48,7 @@ router.post(
 );
 
 // Rotas auxiliares (mantendo do dashboard.controller.ts por enquanto)
+router.put("/api/matriculas/:id", updateMatricula);
 router.delete("/api/matriculas/:id", deleteMatricula);
 router.get("/api/matriculas/buscar-alunos", buscarAlunos);
 

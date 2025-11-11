@@ -164,7 +164,7 @@ export class PreMatriculaRepository {
     id: string,
     data: any
   ): Promise<PreMatriculaWithDetails | null> {
-    const existing = await this.findById(id);
+    const existing = await this.findByIdAny(id);
     if (!existing) {
       return null;
     }
