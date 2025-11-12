@@ -175,6 +175,10 @@ export default function PreMatriculasPage() {
   };
 
   const handleDelete = (id: string) => {
+    // Prevenir múltiplos cliques
+    if (deletePreMatriculaMutation.isPending) {
+      return;
+    }
     if (confirm("Tem certeza que deseja deletar esta pré-matrícula?")) {
       deletePreMatriculaMutation.mutate(id);
     }

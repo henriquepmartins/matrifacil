@@ -255,14 +255,31 @@ const pool = new Pool({
   // Configurações adicionais para estabilidade
   keepAlive: true,
   keepAliveInitialDelayMillis: 0,
+  // Permitir que conexões sejam reutilizadas mesmo após erros
+  allowExitOnIdle: false,
+});
+
+// Handler de erro global para o pool
+pool.on("error", (err) => {
+  console.error("❌ Erro no pool de conexões:", {
+    code: err.code,
+    message: err.message,
+    severity: (err as any).severity,
+  });
+  // Não encerrar o processo, apenas logar o erro
+});
+
+// Handler para quando uma conexão é removida do pool
+pool.on("remove", () => {
+  console.log("ℹ️  Conexão removida do pool");
 });
 
 // Configuração do Drizzle
-// Prepared statements são habilitados por padrão (compatível com session mode do pooler - porta 5432)
-// Se usar transaction mode (porta 6543), desabilitar com: { logger: false, preparedStatements: false }
+// Desabilitar prepared statements para evitar problemas com pooler do Supabase
+// O pooler pode fechar conexões que estão usando prepared statements
 export const db = drizzle(pool, {
   logger: false,
-  // preparedStatements: true (padrão) - funciona com session mode (porta 5432)
+  preparedStatements: false, // Desabilitado para melhor compatibilidade com pooler
 });
 
 // Export schemas

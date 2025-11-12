@@ -46,6 +46,14 @@ export async function syncPendingOperations(): Promise<{
 
   try {
     console.log("🔄 Preparando lote de sincronização...");
+    
+    // Verificar estado do banco antes de começar
+    console.log(`📊 Estado do banco: ${db.isOpen() ? "aberto" : "fechado"}`);
+    if (!db.isOpen()) {
+      console.log("🔄 Abrindo banco de dados...");
+      await db.open();
+      console.log("✅ Banco aberto com sucesso");
+    }
 
     // Construir lote de sincronização (coleta dados pendentes do IndexedDB)
     const batch = await buildSyncBatch();
@@ -68,12 +76,17 @@ export async function syncPendingOperations(): Promise<{
     const result = await sendBatch(batch);
 
     console.log(
-      `📥 Servidor respondeu: ${result.mappings.length} sucessos, ${result.conflicts.length} conflitos`
+      `📥 Servidor respondeu: ${result.mappings.length} sucessos, ${result.conflicts.length} conflitos, success: ${result.success}`
     );
 
-    if (result.success && result.mappings.length > 0) {
-      // Reconciliar dados locais com IDs globais
-      // Atualiza o IndexedDB com os IDs globais recebidos
+    // Reconciliar dados locais com IDs globais se houver mappings
+    // Mesmo se success for false, pode haver alguns itens sincronizados
+    if (result.mappings.length > 0) {
+      // Garantir que o banco está aberto antes de reconciliar
+      console.log("🔍 Verificando estado do banco de dados antes da reconciliação...");
+      await ensureDatabaseReady();
+      console.log("✅ Banco de dados verificado e pronto para reconciliação");
+      
       await reconcileData(result.mappings);
       console.log(
         `✅ ${result.mappings.length} registros reconciliados e salvos no IndexedDB`
@@ -81,9 +94,16 @@ export async function syncPendingOperations(): Promise<{
     }
 
     // Log de resultado final
-    console.log(
-      `🎉 Sincronização completa: ${result.mappings.length} salvos, ${result.conflicts.length} falhas`
-    );
+    if (result.conflicts.length > 0) {
+      console.warn(
+        `⚠️ Sincronização parcial: ${result.mappings.length} salvos, ${result.conflicts.length} falhas`
+      );
+      console.warn("Conflicts:", result.conflicts);
+    } else {
+      console.log(
+        `🎉 Sincronização completa: ${result.mappings.length} salvos, ${result.conflicts.length} falhas`
+      );
+    }
 
     return {
       success: result.mappings.length,
@@ -164,14 +184,20 @@ async function sendBatch(batch: any[]): Promise<{
 
     const result = await response.json();
 
+    // Se o processamento foi assíncrono (status 202), fazer polling do status
+    if (response.status === 202 && result.data?.batchId) {
+      console.log(`⏳ Processamento assíncrono iniciado, batchId: ${result.data.batchId}`);
+      return await pollSyncStatus(result.data.batchId, token);
+    }
+
     console.log(
-      `✅ Lote sincronizado: ${result.data.mappings.length} sucessos, ${result.data.conflicts.length} conflitos`
+      `✅ Lote sincronizado: ${result.data?.mappings?.length || 0} sucessos, ${result.data?.conflicts?.length || 0} conflitos`
     );
 
     return {
       success: result.success,
-      mappings: result.data.mappings || [],
-      conflicts: result.data.conflicts || [],
+      mappings: result.data?.mappings || [],
+      conflicts: result.data?.conflicts || [],
     };
   } catch (error: any) {
     // Se for erro de conexão (servidor offline), lança erro específico para ser tratado upstream
@@ -218,6 +244,90 @@ async function getDeviceId(): Promise<string> {
 async function getAuthToken(): Promise<string | null> {
   const session = await db.sessions.toCollection().first();
   return session?.token || null;
+}
+
+/**
+ * Faz polling do status de sincronização quando o processamento é assíncrono
+ */
+async function pollSyncStatus(
+  batchId: string,
+  token: string | null,
+  maxAttempts = 30,
+  intervalMs = 1000
+): Promise<{
+  success: boolean;
+  mappings: SyncMapping[];
+  conflicts: any[];
+}> {
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const response = await fetch(`${API_URL}/api/sync/status/${batchId}`, {
+        method: "GET",
+        headers,
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        const status = result.data.status;
+
+        if (status === "completed") {
+          console.log(`✅ Sincronização ${batchId} concluída`);
+          return {
+            success: true,
+            mappings: result.data.mappings || [],
+            conflicts: result.data.conflicts || [],
+          };
+        } else if (status === "failed") {
+          console.error(`❌ Sincronização ${batchId} falhou:`, result.data.error);
+          return {
+            success: false,
+            mappings: [],
+            conflicts: result.data.conflicts || [],
+          };
+        } else if (status === "processing") {
+          // Ainda processando, aguardar e tentar novamente
+          console.log(`⏳ Sincronização ${batchId} ainda processando... (tentativa ${attempt + 1}/${maxAttempts})`);
+          await new Promise((resolve) => setTimeout(resolve, intervalMs));
+          continue;
+        }
+      }
+
+      // Status desconhecido, aguardar e tentar novamente
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    } catch (error: any) {
+      console.error(`❌ Erro ao verificar status da sincronização ${batchId}:`, error);
+      
+      // Se for erro de conexão, aguardar e tentar novamente
+      if (attempt < maxAttempts - 1) {
+        await new Promise((resolve) => setTimeout(resolve, intervalMs));
+        continue;
+      }
+      
+      // Última tentativa falhou
+      throw new Error(
+        `Erro ao verificar status da sincronização: ${error.message || "Erro desconhecido"}`
+      );
+    }
+  }
+
+  // Timeout - não conseguiu verificar o status
+  throw new Error(
+    `Timeout ao aguardar sincronização ${batchId}. O processamento pode estar em andamento.`
+  );
 }
 
 /**

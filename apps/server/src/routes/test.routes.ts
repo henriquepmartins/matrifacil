@@ -296,6 +296,71 @@ router.post("/apply-migration", async (req, res) => {
   }
 });
 
+router.post("/apply-sync-migration", async (req, res) => {
+  try {
+    console.log("🔄 Aplicando migration de sync tables...");
+
+    // Criar tipo ENUM sync_status se não existir
+    await db.execute(
+      sql`DO $$ BEGIN
+        CREATE TYPE "public"."sync_status" AS ENUM('pending', 'processing', 'completed', 'failed');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;`
+    );
+
+    // Criar tabela sync_log se não existir
+    await db.execute(
+      sql`CREATE TABLE IF NOT EXISTS "sync_log" (
+        "id" text PRIMARY KEY NOT NULL,
+        "user_id" text NOT NULL,
+        "device_id" text,
+        "batch_id" text NOT NULL,
+        "status" "sync_status" DEFAULT 'pending' NOT NULL,
+        "records_count" integer NOT NULL,
+        "success_count" integer DEFAULT 0,
+        "failure_count" integer DEFAULT 0,
+        "error" text,
+        "metadata" jsonb,
+        "started_at" timestamp DEFAULT now() NOT NULL,
+        "completed_at" timestamp,
+        "created_at" timestamp DEFAULT now() NOT NULL,
+        "updated_at" timestamp DEFAULT now() NOT NULL
+      );`
+    );
+
+    // Drop old sync_conflict table if it exists
+    await db.execute(sql`DROP TABLE IF EXISTS "sync_conflict";`);
+
+    // Create sync_conflict table with correct schema
+    await db.execute(
+      sql`CREATE TABLE "sync_conflict" (
+        "id" text PRIMARY KEY NOT NULL,
+        "batch_id" text NOT NULL,
+        "entity" text NOT NULL,
+        "local_id" text NOT NULL,
+        "error" text,
+        "created_at" timestamp DEFAULT now() NOT NULL,
+        "updated_at" timestamp DEFAULT now() NOT NULL
+      );`
+    );
+
+    // Create indexes
+    await db.execute(
+      sql`CREATE INDEX IF NOT EXISTS "sync_conflict_batch_id_idx" ON "sync_conflict" ("batch_id");`
+    );
+    await db.execute(
+      sql`CREATE INDEX IF NOT EXISTS "sync_log_batch_id_idx" ON "sync_log" ("batch_id");`
+    );
+
+    console.log("✅ Migration de sync tables aplicada com sucesso!");
+    res.json({ success: true, message: "Migration de sync tables aplicada" });
+  } catch (error: any) {
+    console.error("❌ Erro na migration:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.post("/test-insert", async (req, res) => {
   try {
     console.log("🧪 Testando inserção simples...");

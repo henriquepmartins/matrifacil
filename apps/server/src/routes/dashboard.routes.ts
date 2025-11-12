@@ -10,6 +10,7 @@ import {
   getTurmaDetalhes,
   transferirAluno,
 } from "../controllers/dashboard.controller.js";
+import { authenticateToken } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 const matriculaController = container.get<MatriculaController>(
@@ -18,6 +19,9 @@ const matriculaController = container.get<MatriculaController>(
 const dashboardController = container.get<DashboardController>(
   "dashboardController"
 );
+
+// Todas as rotas do dashboard requerem autenticação
+router.use(authenticateToken);
 
 // Dashboard stats
 router.get(

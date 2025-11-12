@@ -43,6 +43,13 @@
       "when": 1761498473895,
       "tag": "0005_glossy_luminals",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1762902040000,
+      "tag": "0006_fix_sync_tables",
+      "breakpoints": true
     }
   ]
 }

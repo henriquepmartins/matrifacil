@@ -18,7 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { API_URL } from "@/lib/api-client";
+import { apiClient } from "@/lib/api-client";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -137,15 +137,14 @@ export default function MatriculaActionsMenu({
         return { success: true };
       }
 
-      const response = await fetch(`${API_URL}/api/matriculas/${serverId}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("❌ Erro na resposta do servidor:", errorText);
+      try {
+        await apiClient.delete(`/api/matriculas/${serverId}`);
+        return { success: true };
+      } catch (error: any) {
+        console.error("❌ Erro na resposta do servidor:", error);
 
         // Se erro 404, tentar deletar localmente (matrícula pode estar apenas local)
-        if (response.status === 404) {
+        if (error?.statusCode === 404) {
           console.log(
             "🔄 Matrícula não encontrada no servidor, deletando localmente..."
           );
@@ -154,8 +153,8 @@ export default function MatriculaActionsMenu({
           try {
             await db.matriculas.update(id, { sync_status: "pending" });
             console.log("✅ Sync status atualizado para pending");
-          } catch (error) {
-            console.warn("⚠️ Erro ao atualizar sync_status:", error);
+          } catch (updateError) {
+            console.warn("⚠️ Erro ao atualizar sync_status:", updateError);
           }
 
           await deletePreMatriculaLocal(id);
@@ -163,14 +162,14 @@ export default function MatriculaActionsMenu({
         }
 
         throw new Error(
-          `Erro ao deletar matrícula: ${response.status} - ${errorText}`
+          `Erro ao deletar matrícula: ${error?.statusCode || "desconhecido"} - ${error?.message || "Erro desconhecido"}`
         );
       }
-      return response.json();
     },
     onSuccess: () => {
       toast.success("Matrícula deletada com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["matriculas"] });
+      queryClient.invalidateQueries({ queryKey: ["pre-matriculas"] });
       setIsDeleteDialogOpen(false);
     },
     onError: (error) => {
@@ -182,20 +181,7 @@ export default function MatriculaActionsMenu({
   // Mutação para atualizar matrícula
   const updateMatricula = useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch(
-        `${API_URL}/api/matriculas/${matricula.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(data),
-        }
-      );
-      if (!response.ok) {
-        throw new Error("Erro ao atualizar matrícula");
-      }
-      return response.json();
+      return apiClient.put(`/api/matriculas/${matricula.id}`, data);
     },
     onSuccess: () => {
       toast.success("Matrícula atualizada com sucesso!");
@@ -210,6 +196,10 @@ export default function MatriculaActionsMenu({
   });
 
   const handleDelete = () => {
+    // Prevenir múltiplos cliques
+    if (deleteMatricula.isPending) {
+      return;
+    }
     deleteMatricula.mutate(matricula.id);
   };
 
@@ -483,7 +473,15 @@ export default function MatriculaActionsMenu({
       </Dialog>
 
       {/* Dialog de Confirmação de Exclusão */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <Dialog 
+        open={isDeleteDialogOpen} 
+        onOpenChange={(open) => {
+          // Não permitir fechar o diálogo durante a deleção
+          if (!deleteMatricula.isPending) {
+            setIsDeleteDialogOpen(open);
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirmar Exclusão</DialogTitle>
@@ -505,8 +503,13 @@ export default function MatriculaActionsMenu({
               </Button>
               <Button
                 variant="destructive"
-                onClick={handleDelete}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleDelete();
+                }}
                 disabled={deleteMatricula.isPending}
+                type="button"
               >
                 {deleteMatricula.isPending ? "Deletando..." : "Deletar"}
               </Button>

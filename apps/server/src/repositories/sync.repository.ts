@@ -30,6 +30,64 @@ export interface SyncResult {
   }>;
 }
 
+// Função auxiliar para executar com retry em caso de erro de conexão
+async function executeWithRetry<T>(
+  operation: () => Promise<T>,
+  entityName: string,
+  maxRetries = 3,
+  delayMs = 2000
+): Promise<T> {
+  let lastError: any;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(`🔄 Tentativa ${attempt + 1}/${maxRetries} para ${entityName}...`);
+      }
+      const result = await Promise.race([
+        operation(),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Operation timeout")), 30000)
+        ),
+      ]);
+      return result;
+    } catch (error: any) {
+      lastError = error;
+      
+      // Log detalhado do erro
+      console.error(`❌ Erro na tentativa ${attempt + 1}/${maxRetries} para ${entityName}:`, {
+        code: error?.code,
+        causeCode: error?.cause?.code,
+        message: error?.message,
+        severity: error?.severity,
+      });
+      
+      // Verificar se é erro de conexão que pode ser recuperado
+      const isConnectionError =
+        error?.code === "XX000" ||
+        error?.cause?.code === "XX000" ||
+        error?.severity === "FATAL" ||
+        error?.message?.includes("db_termination") ||
+        error?.message?.includes("connection terminated") ||
+        error?.message?.includes("Connection terminated") ||
+        error?.message?.includes("shutdown") ||
+        (error?.cause && typeof error.cause === "object" && "code" in error.cause && error.cause.code === "XX000");
+      
+      if (isConnectionError && attempt < maxRetries - 1) {
+        const waitTime = delayMs * (attempt + 1); // Backoff exponencial
+        console.warn(
+          `⚠️ Erro de conexão detectado ao processar ${entityName} (tentativa ${attempt + 1}/${maxRetries}), aguardando ${waitTime}ms antes de tentar novamente...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+        continue;
+      }
+      
+      // Se não for erro de conexão ou já tentou todas as vezes, lança o erro
+      throw error;
+    }
+  }
+  throw lastError;
+}
+
 export class SyncRepository {
   async processBatch(
     batch: SyncBatchItem[],
@@ -52,27 +110,77 @@ export class SyncRepository {
 
     // Processar em ordem de dependências
     for (const item of batch) {
+      let errorHandled = false; // Flag para indicar se o erro foi tratado
+      
       try {
         console.log(
           `📝 Processando ${item.entity} (operação: ${item.operation}, id_local: ${item.id_local})`
         );
         let id_global: string | undefined;
+        
+        // Pequeno delay entre itens para evitar sobrecarga de conexões
+        if (mappings.length > 0 || conflicts.length > 0) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
 
         switch (item.entity) {
           case "responsavel":
             if (item.operation === "create") {
-              const now = new Date();
-              const payload = {
-                id: this.generateId(),
-                ...item.data,
-                createdAt: now,
-                updatedAt: now,
-              } as any;
-              const [created] = await db
-                .insert(responsavel)
-                .values(payload)
-                .returning({ id: responsavel.id });
-              id_global = created.id;
+              // Verificar se já existe um responsável com o mesmo CPF
+              if (item.data.cpf) {
+                const existing = await executeWithRetry(
+                  () =>
+                    db
+                      .select({ id: responsavel.id })
+                      .from(responsavel)
+                      .where(eq(responsavel.cpf, item.data.cpf))
+                      .limit(1),
+                  `responsavel findByCPF ${item.data.cpf}`
+                );
+
+                if (existing.length > 0) {
+                  console.log(
+                    `ℹ️  Responsável com CPF ${item.data.cpf} já existe, usando ID existente: ${existing[0].id}`
+                  );
+                  id_global = existing[0].id;
+                } else {
+                  // Criar novo responsável
+                  const now = new Date();
+                  const payload = {
+                    id: this.generateId(),
+                    ...item.data,
+                    createdAt: now,
+                    updatedAt: now,
+                  } as any;
+                  const [created] = await executeWithRetry(
+                    () =>
+                      db
+                        .insert(responsavel)
+                        .values(payload)
+                        .returning({ id: responsavel.id }),
+                    `responsavel insert ${item.id_local}`
+                  );
+                  id_global = created.id;
+                }
+              } else {
+                // Se não tem CPF, criar normalmente
+                const now = new Date();
+                const payload = {
+                  id: this.generateId(),
+                  ...item.data,
+                  createdAt: now,
+                  updatedAt: now,
+                } as any;
+                const [created] = await executeWithRetry(
+                  () =>
+                    db
+                      .insert(responsavel)
+                      .values(payload)
+                      .returning({ id: responsavel.id }),
+                  `responsavel insert ${item.id_local}`
+                );
+                id_global = created.id;
+              }
             }
             break;
 
@@ -89,23 +197,27 @@ export class SyncRepository {
                 createdAt: now,
                 updatedAt: now,
               } as any;
-              const [created] = await db
-                .insert(aluno)
-                .values(payload)
-                .returning({ id: aluno.id });
+              const [created] = await executeWithRetry(
+                () => db.insert(aluno).values(payload).returning({ id: aluno.id }),
+                `aluno ${item.id_local}`
+              );
               id_global = created.id;
             }
             break;
 
           case "turma":
             if (item.operation === "create") {
-              const [created] = await db
-                .insert(turma)
-                .values({
-                  id: this.generateId(),
-                  ...item.data,
-                })
-                .returning({ id: turma.id });
+              const [created] = await executeWithRetry(
+                () =>
+                  db
+                    .insert(turma)
+                    .values({
+                      id: this.generateId(),
+                      ...item.data,
+                    })
+                    .returning({ id: turma.id }),
+                `turma ${item.id_local}`
+              );
               id_global = created.id;
             }
             break;
@@ -128,24 +240,32 @@ export class SyncRepository {
 
               // Verificar se turma tem vagas disponíveis (se aplicável)
               if (id_turma_global) {
-                const [turmaInfo] = await db
-                  .select()
-                  .from(turma)
-                  .where(eq(turma.id, id_turma_global))
-                  .limit(1);
+                const [turmaInfo] = await executeWithRetry(
+                  () =>
+                    db
+                      .select()
+                      .from(turma)
+                      .where(eq(turma.id, id_turma_global))
+                      .limit(1),
+                  `turma select ${id_turma_global}`
+                );
 
                 if (!turmaInfo || turmaInfo.vagasDisponiveis <= 0) {
                   // Matrícula vai para lista de espera
                   item.data.status = "pre";
                 } else {
                   // Atualizar vagas disponíveis
-                  await db
-                    .update(turma)
-                    .set({
-                      vagasDisponiveis: sql`${turma.vagasDisponiveis} - 1`,
-                      updatedAt: new Date(),
-                    })
-                    .where(eq(turma.id, id_turma_global));
+                  await executeWithRetry(
+                    () =>
+                      db
+                        .update(turma)
+                        .set({
+                          vagasDisponiveis: sql`${turma.vagasDisponiveis} - 1`,
+                          updatedAt: new Date(),
+                        })
+                        .where(eq(turma.id, id_turma_global)),
+                    `turma update ${id_turma_global}`
+                  );
                 }
               }
 
@@ -166,19 +286,23 @@ export class SyncRepository {
                 ...restOfData
               } = item.data;
 
-              const [created] = await db
-                .insert(matricula)
-                .values({
-                  id: this.generateId(),
-                  alunoId: id_aluno_global,
-                  responsavelId: id_responsavel_global,
-                  turmaId: id_turma_global,
-                  ...restOfData,
-                  protocoloLocal: protocolo,
-                  // Respeitar status original ou ajustado pela lógica de vagas
-                  status: originalStatus ?? "pre",
-                })
-                .returning({ id: matricula.id });
+              const [created] = await executeWithRetry(
+                () =>
+                  db
+                    .insert(matricula)
+                    .values({
+                      id: this.generateId(),
+                      alunoId: id_aluno_global,
+                      responsavelId: id_responsavel_global,
+                      turmaId: id_turma_global,
+                      ...restOfData,
+                      protocoloLocal: protocolo,
+                      // Respeitar status original ou ajustado pela lógica de vagas
+                      status: originalStatus ?? "pre",
+                    })
+                    .returning({ id: matricula.id }),
+                `matricula ${item.id_local}`
+              );
               id_global = created.id;
             }
             break;
@@ -189,14 +313,18 @@ export class SyncRepository {
                 mappings.find((m) => m.id_local === item.data.matriculaId)
                   ?.id_global || item.data.matriculaId;
 
-              const [created] = await db
-                .insert(documento)
-                .values({
-                  id: this.generateId(),
-                  matriculaId: id_matricula_global,
-                  ...item.data,
-                })
-                .returning({ id: documento.id });
+              const [created] = await executeWithRetry(
+                () =>
+                  db
+                    .insert(documento)
+                    .values({
+                      id: this.generateId(),
+                      matriculaId: id_matricula_global,
+                      ...item.data,
+                    })
+                    .returning({ id: documento.id }),
+                `documento ${item.id_local}`
+              );
               id_global = created.id;
             }
             break;
@@ -212,15 +340,19 @@ export class SyncRepository {
                     ?.id_global || item.data.documentoId
                 : null;
 
-              const [created] = await db
-                .insert(pendencia)
-                .values({
-                  id: this.generateId(),
-                  matriculaId: id_matricula_global,
-                  documentoId: id_documento_global,
-                  ...item.data,
-                })
-                .returning({ id: pendencia.id });
+              const [created] = await executeWithRetry(
+                () =>
+                  db
+                    .insert(pendencia)
+                    .values({
+                      id: this.generateId(),
+                      matriculaId: id_matricula_global,
+                      documentoId: id_documento_global,
+                      ...item.data,
+                    })
+                    .returning({ id: pendencia.id }),
+                `pendencia ${item.id_local}`
+              );
               id_global = created.id;
             }
             break;
@@ -240,12 +372,59 @@ export class SyncRepository {
           });
         }
       } catch (error: any) {
-        console.error(`❌ Erro ao processar ${item.entity}:`, error);
-        conflicts.push({
-          entity: item.entity,
-          id_local: item.id_local,
-          error: error.message || "Erro desconhecido",
-        });
+        // Verificar se é erro de duplicação (CPF único, etc)
+        const isDuplicateError =
+          error?.cause?.code === "23505" ||
+          error?.code === "23505" ||
+          error?.message?.includes("duplicate key") ||
+          error?.message?.includes("unique constraint");
+
+        if (isDuplicateError && item.entity === "responsavel" && item.data.cpf) {
+          // Tentar buscar o responsável existente por CPF
+          try {
+            console.log(
+              `🔄 Erro de duplicação detectado para responsável com CPF ${item.data.cpf}, buscando existente...`
+            );
+            const existing = await executeWithRetry(
+              () =>
+                db
+                  .select({ id: responsavel.id })
+                  .from(responsavel)
+                  .where(eq(responsavel.cpf, item.data.cpf))
+                  .limit(1),
+              `responsavel findByCPF after duplicate ${item.data.cpf}`
+            );
+
+            if (existing.length > 0) {
+              console.log(
+                `✅ Responsável existente encontrado: ${existing[0].id}, usando este ID`
+              );
+              mappings.push({
+                entity: item.entity,
+                id_local: item.id_local,
+                id_global: existing[0].id,
+              });
+              // Não adicionar ao conflicts, já foi resolvido
+              errorHandled = true; // Marcar que o erro foi tratado
+            }
+          } catch (lookupError) {
+            console.error(
+              `❌ Erro ao buscar responsável existente após duplicação:`,
+              lookupError
+            );
+          }
+        }
+
+        // Só adicionar ao conflicts se o erro não foi tratado
+        if (!errorHandled) {
+          console.error(`❌ Erro ao processar ${item.entity}:`, error);
+          const errorMessage = error.message || error.toString() || "Erro desconhecido";
+          conflicts.push({
+            entity: item.entity,
+            id_local: item.id_local,
+            error: errorMessage,
+          });
+        }
       }
     }
 
@@ -253,6 +432,22 @@ export class SyncRepository {
       `🎉 Batch processado: ${mappings.length} sucessos, ${conflicts.length} falhas`
     );
     return { mappings, conflicts };
+  }
+
+  async saveSyncConflicts(batchId: string, conflicts: Array<{ entity: string; id_local: string; error: string }>) {
+    if (conflicts.length === 0) return;
+
+    await db.insert(syncConflict).values(
+      conflicts.map((c) => ({
+        id: this.generateId(),
+        batchId,
+        entity: c.entity,
+        idLocal: c.id_local,
+        error: c.error,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }))
+    );
   }
 
   async createSyncLog(data: {
@@ -287,6 +482,27 @@ export class SyncRepository {
         updatedAt: new Date(),
       })
       .where(eq(syncLog.batchId, batchId));
+  }
+
+  async getSyncLog(batchId: string) {
+    const [log] = await db
+      .select()
+      .from(syncLog)
+      .where(eq(syncLog.batchId, batchId))
+      .limit(1);
+    return log || null;
+  }
+
+  async getSyncConflicts(batchId: string) {
+    const conflicts = await db
+      .select()
+      .from(syncConflict)
+      .where(eq(syncConflict.batchId, batchId));
+    return conflicts.map((c) => ({
+      entity: c.entity,
+      id_local: c.idLocal,
+      error: c.error,
+    }));
   }
 
   async getChangesSince(timestamp: Date) {
