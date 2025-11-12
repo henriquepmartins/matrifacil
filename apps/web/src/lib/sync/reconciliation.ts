@@ -198,47 +198,145 @@ export async function reconcileData(mappings: SyncMapping[]): Promise<void> {
 
       // Agora processar matrículas, atualizando também os relacionamentos
       console.log(`🔄 Processando ${matriculaMappings.length} matrícula(s)...`);
+      const reconciliationResults: Array<{
+        id_local: string;
+        id_global: string;
+        success: boolean;
+        error?: string;
+      }> = [];
+
       for (const mapping of matriculaMappings) {
         const { entity, id_local, id_global } = mapping;
         const store = db.matriculas;
 
-        // Buscar registro local da matrícula
-        const registro = await store.get(id_local) as CachedMatricula | undefined;
+        try {
+          // Buscar registro local da matrícula
+          const registro = await store.get(id_local) as CachedMatricula | undefined;
 
-        if (!registro) {
-          console.warn(`Matrícula ${id_local} não encontrada`);
-          continue;
+          if (!registro) {
+            const errorMsg = `Matrícula ${id_local} não encontrada no IndexedDB`;
+            console.warn(`⚠️ ${errorMsg}`);
+            reconciliationResults.push({
+              id_local,
+              id_global,
+              success: false,
+              error: errorMsg,
+            });
+            continue;
+          }
+
+          // Resolver IDs globais dos relacionamentos
+          const alunoIdGlobal = idMapping.get(registro.alunoId) || registro.alunoId;
+          const responsavelIdGlobal = idMapping.get(registro.responsavelId) || registro.responsavelId;
+          const turmaIdGlobal = registro.turmaId ? (idMapping.get(registro.turmaId) || registro.turmaId) : undefined;
+
+          console.log(`📝 Atualizando matrícula ${id_local}:`, {
+            id_local,
+            id_global,
+            alunoId: `${registro.alunoId} → ${alunoIdGlobal}`,
+            responsavelId: `${registro.responsavelId} → ${responsavelIdGlobal}`,
+            turmaId: registro.turmaId ? `${registro.turmaId} → ${turmaIdGlobal}` : 'sem turma',
+          });
+
+          // Atualizar matrícula com ID global e relacionamentos atualizados
+          const updateResult = await store.update(id_local, {
+            idGlobal: id_global,
+            alunoId: alunoIdGlobal,
+            responsavelId: responsavelIdGlobal,
+            turmaId: turmaIdGlobal,
+            sync_status: "synced",
+            synced_at: Date.now(),
+          } as any);
+
+          // Validar se o update foi bem-sucedido
+          const verificado = await store.get(id_local) as CachedMatricula | undefined;
+          
+          if (!verificado) {
+            const errorMsg = `Matrícula ${id_local} não encontrada após update`;
+            console.error(`❌ ${errorMsg}`);
+            reconciliationResults.push({
+              id_local,
+              id_global,
+              success: false,
+              error: errorMsg,
+            });
+            continue;
+          }
+
+          // Validar se o idGlobal foi atualizado corretamente
+          if (verificado.idGlobal !== id_global) {
+            const errorMsg = `idGlobal não atualizado corretamente. Esperado: ${id_global}, Obtido: ${verificado.idGlobal}`;
+            console.error(`❌ ${errorMsg}`);
+            reconciliationResults.push({
+              id_local,
+              id_global,
+              success: false,
+              error: errorMsg,
+            });
+            continue;
+          }
+
+          // Validar se o sync_status foi atualizado
+          if (verificado.sync_status !== "synced") {
+            const errorMsg = `sync_status não atualizado corretamente. Esperado: synced, Obtido: ${verificado.sync_status}`;
+            console.error(`❌ ${errorMsg}`);
+            reconciliationResults.push({
+              id_local,
+              id_global,
+              success: false,
+              error: errorMsg,
+            });
+            continue;
+          }
+
+          console.log(`✅ Reconciliado matrícula ${id_local} → ${id_global}`);
+          console.log(`   - alunoId: ${registro.alunoId} → ${alunoIdGlobal}`);
+          console.log(`   - responsavelId: ${registro.responsavelId} → ${responsavelIdGlobal}`);
+          console.log(`🔍 Validação pós-update:`, {
+            id_local,
+            id_global,
+            idGlobal_salvo: verificado.idGlobal,
+            alunoId: verificado.alunoId,
+            responsavelId: verificado.responsavelId,
+            sync_status: verificado.sync_status,
+            synced_at: verificado.synced_at,
+          });
+
+          reconciliationResults.push({
+            id_local,
+            id_global,
+            success: true,
+          });
+        } catch (error: any) {
+          const errorMsg = `Erro ao reconciliar matrícula ${id_local}: ${error.message || error}`;
+          console.error(`❌ ${errorMsg}`);
+          reconciliationResults.push({
+            id_local,
+            id_global,
+            success: false,
+            error: errorMsg,
+          });
         }
+      }
 
-        // Resolver IDs globais dos relacionamentos
-        const alunoIdGlobal = idMapping.get(registro.alunoId) || registro.alunoId;
-        const responsavelIdGlobal = idMapping.get(registro.responsavelId) || registro.responsavelId;
-        const turmaIdGlobal = registro.turmaId ? (idMapping.get(registro.turmaId) || registro.turmaId) : undefined;
-
-        // Atualizar matrícula com ID global e relacionamentos atualizados
-        await store.update(id_local, {
-          idGlobal: id_global,
-          alunoId: alunoIdGlobal,
-          responsavelId: responsavelIdGlobal,
-          turmaId: turmaIdGlobal,
-          sync_status: "synced",
-          synced_at: Date.now(),
-        } as any);
-
-        console.log(`✅ Reconciliado matrícula ${id_local} → ${id_global}`);
-        console.log(`   - alunoId: ${registro.alunoId} → ${alunoIdGlobal}`);
-        console.log(`   - responsavelId: ${registro.responsavelId} → ${responsavelIdGlobal}`);
-        
-        // Debug: Verificar se o update foi bem-sucedido
-        const verificado = await store.get(id_local) as CachedMatricula | undefined;
-        console.log(`🔍 Verificação pós-update:`, {
-          id_local,
-          id_global,
-          idGlobal_salvo: verificado?.idGlobal,
-          alunoId: verificado?.alunoId,
-          responsavelId: verificado?.responsavelId,
-          sync_status: verificado?.sync_status,
-        });
+      // Resumo da reconciliação
+      const successful = reconciliationResults.filter(r => r.success).length;
+      const failed = reconciliationResults.filter(r => !r.success).length;
+      
+      console.log(`\n📊 Resumo da reconciliação de matrículas:`);
+      console.log(`   ✅ Sucessos: ${successful}/${matriculaMappings.length}`);
+      console.log(`   ❌ Falhas: ${failed}/${matriculaMappings.length}`);
+      
+      if (failed > 0) {
+        console.error(`❌ Matrículas que falharam na reconciliação:`, 
+          reconciliationResults.filter(r => !r.success).map(r => ({
+            id_local: r.id_local,
+            id_global: r.id_global,
+            error: r.error,
+          }))
+        );
+        // Não lançar erro, apenas logar - permite que outras operações continuem
+        console.warn(`⚠️ Algumas matrículas falharam na reconciliação, mas o processo continuará`);
       }
 
       // Limpar fila de sincronização (se disponível)

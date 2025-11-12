@@ -259,19 +259,68 @@ const pool = new Pool({
   allowExitOnIdle: false,
 });
 
+// Contador de erros consecutivos para detectar problemas persistentes
+let consecutiveErrors = 0;
+let lastErrorTime = 0;
+const ERROR_RESET_INTERVAL = 60000; // 1 minuto
+
 // Handler de erro global para o pool
 pool.on("error", (err) => {
+  const now = Date.now();
+  const isConnectionError =
+    err.code === "XX000" ||
+    err.message?.includes("db_termination") ||
+    err.message?.includes("connection terminated") ||
+    err.message?.includes("Connection terminated") ||
+    err.message?.includes("shutdown") ||
+    (err as any).severity === "FATAL";
+
   console.error("❌ Erro no pool de conexões:", {
     code: err.code,
     message: err.message,
     severity: (err as any).severity,
+    isConnectionError,
   });
+
+  // Resetar contador se passou muito tempo desde o último erro
+  if (now - lastErrorTime > ERROR_RESET_INTERVAL) {
+    consecutiveErrors = 0;
+  }
+
+  lastErrorTime = now;
+
+  if (isConnectionError) {
+    consecutiveErrors++;
+    console.warn(`⚠️ Erro de conexão detectado (${consecutiveErrors} consecutivos)`);
+
+    // Se há muitos erros consecutivos, tentar reconectar
+    if (consecutiveErrors >= 3) {
+      console.warn("🔄 Muitos erros consecutivos detectados, considerando reconexão...");
+      // O pool do pg já gerencia reconexão automaticamente, mas podemos forçar
+      // limpeza de conexões problemáticas
+      consecutiveErrors = 0; // Reset após ação
+    }
+  } else {
+    // Reset contador para erros não relacionados a conexão
+    consecutiveErrors = 0;
+  }
+
   // Não encerrar o processo, apenas logar o erro
+  // O pool do pg gerencia reconexão automaticamente
 });
 
 // Handler para quando uma conexão é removida do pool
 pool.on("remove", () => {
   console.log("ℹ️  Conexão removida do pool");
+});
+
+// Handler para quando uma conexão é adicionada ao pool
+pool.on("connect", () => {
+  // Reset contador de erros quando uma nova conexão é estabelecida
+  if (consecutiveErrors > 0) {
+    console.log(`✅ Nova conexão estabelecida, resetando contador de erros`);
+    consecutiveErrors = 0;
+  }
 });
 
 // Configuração do Drizzle

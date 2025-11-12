@@ -34,8 +34,8 @@ export interface SyncResult {
 async function executeWithRetry<T>(
   operation: () => Promise<T>,
   entityName: string,
-  maxRetries = 3,
-  delayMs = 2000
+  maxRetries = 5, // Aumentado de 3 para 5 tentativas
+  baseDelayMs = 1000 // Base delay reduzido para 1s
 ): Promise<T> {
   let lastError: any;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -43,12 +43,20 @@ async function executeWithRetry<T>(
       if (attempt > 0) {
         console.log(`🔄 Tentativa ${attempt + 1}/${maxRetries} para ${entityName}...`);
       }
+      
+      // Timeout aumentado para 45s para operações mais longas
       const result = await Promise.race([
         operation(),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("Operation timeout")), 30000)
+          setTimeout(() => reject(new Error("Operation timeout after 45s")), 45000)
         ),
       ]);
+      
+      // Se chegou aqui, a operação foi bem-sucedida
+      if (attempt > 0) {
+        console.log(`✅ Operação ${entityName} bem-sucedida após ${attempt + 1} tentativa(s)`);
+      }
+      
       return result;
     } catch (error: any) {
       lastError = error;
@@ -59,6 +67,7 @@ async function executeWithRetry<T>(
         causeCode: error?.cause?.code,
         message: error?.message,
         severity: error?.severity,
+        stack: error?.stack?.split('\n').slice(0, 3).join('\n'), // Primeiras 3 linhas do stack
       });
       
       // Verificar se é erro de conexão que pode ser recuperado
@@ -70,18 +79,43 @@ async function executeWithRetry<T>(
         error?.message?.includes("connection terminated") ||
         error?.message?.includes("Connection terminated") ||
         error?.message?.includes("shutdown") ||
+        error?.message?.includes("timeout") ||
+        error?.message?.includes("ECONNRESET") ||
+        error?.message?.includes("ETIMEDOUT") ||
         (error?.cause && typeof error.cause === "object" && "code" in error.cause && error.cause.code === "XX000");
       
-      if (isConnectionError && attempt < maxRetries - 1) {
-        const waitTime = delayMs * (attempt + 1); // Backoff exponencial
+      // Verificar se é erro de timeout
+      const isTimeoutError = 
+        error?.message?.includes("timeout") ||
+        error?.message?.includes("ETIMEDOUT") ||
+        error?.code === "ETIMEDOUT";
+      
+      // Se for erro de conexão ou timeout e ainda há tentativas, fazer retry
+      if ((isConnectionError || isTimeoutError) && attempt < maxRetries - 1) {
+        // Backoff exponencial com jitter: baseDelayMs * 2^attempt + random(0-1000ms)
+        const exponentialDelay = baseDelayMs * Math.pow(2, attempt);
+        const jitter = Math.floor(Math.random() * 1000);
+        const waitTime = exponentialDelay + jitter;
+        
+        // Limitar wait time máximo a 10 segundos
+        const finalWaitTime = Math.min(waitTime, 10000);
+        
         console.warn(
-          `⚠️ Erro de conexão detectado ao processar ${entityName} (tentativa ${attempt + 1}/${maxRetries}), aguardando ${waitTime}ms antes de tentar novamente...`
+          `⚠️ Erro de ${isTimeoutError ? 'timeout' : 'conexão'} detectado ao processar ${entityName} (tentativa ${attempt + 1}/${maxRetries}), aguardando ${finalWaitTime}ms antes de tentar novamente...`
         );
-        await new Promise((resolve) => setTimeout(resolve, waitTime));
+        
+        await new Promise((resolve) => setTimeout(resolve, finalWaitTime));
         continue;
       }
       
-      // Se não for erro de conexão ou já tentou todas as vezes, lança o erro
+      // Se não for erro recuperável ou já tentou todas as vezes, lança o erro
+      if (attempt === maxRetries - 1) {
+        console.error(`❌ Falha após ${maxRetries} tentativas para ${entityName}. Último erro:`, {
+          code: lastError?.code,
+          message: lastError?.message,
+        });
+      }
+      
       throw error;
     }
   }
