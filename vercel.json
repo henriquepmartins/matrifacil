@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "buildCommand": "cd apps/web && npm run build",
+  "devCommand": "cd apps/web && npm run dev",
+  "installCommand": "bun install",
+  "framework": "nextjs",
+  "rootDirectory": "apps/web",
+  "env": {
+    "NEXT_PUBLIC_API_URL": "https://server-production-3365.up.railway.app"
+  }
+}
+
