@@ -15,7 +15,8 @@ import { v4 as uuidv4 } from "uuid";
 
 export class DrizzleMatriculaRepository implements MatriculaRepository {
   async findById(id: string): Promise<Matricula | null> {
-    const [result] = await db
+    // Primeiro tenta buscar por id (ID local)
+    let [result] = await db
       .select({
         matricula: matricula,
         aluno: aluno,
@@ -28,6 +29,30 @@ export class DrizzleMatriculaRepository implements MatriculaRepository {
       .leftJoin(turma, eq(matricula.turmaId, turma.id))
       .where(eq(matricula.id, id))
       .limit(1);
+
+    // Se não encontrou por id, tenta buscar por idGlobal (fallback para sincronização)
+    if (!result || !result.aluno || !result.responsavel) {
+      console.log(`🔍 Matrícula não encontrada por id (${id}), tentando buscar por idGlobal...`);
+      [result] = await db
+        .select({
+          matricula: matricula,
+          aluno: aluno,
+          responsavel: responsavel,
+          turma: turma,
+        })
+        .from(matricula)
+        .leftJoin(aluno, eq(matricula.alunoId, aluno.id))
+        .leftJoin(responsavel, eq(matricula.responsavelId, responsavel.id))
+        .leftJoin(turma, eq(matricula.turmaId, turma.id))
+        .where(eq(matricula.idGlobal, id))
+        .limit(1);
+
+      if (result && result.aluno && result.responsavel) {
+        console.log(`✅ Matrícula encontrada por idGlobal (${id})`);
+      } else {
+        console.log(`❌ Matrícula não encontrada nem por id nem por idGlobal (${id})`);
+      }
+    }
 
     if (!result || !result.aluno || !result.responsavel) return null;
 

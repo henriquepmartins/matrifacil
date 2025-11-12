@@ -193,30 +193,53 @@ export default function NovaMatriculaPage() {
         documentosIniciais: docsSelecionados,
       });
 
-      // Verificar se a pré-matrícula está sincronizada
+      // Verificar se a pré-matrícula está sincronizada e obter o ID global correto
       // Buscar no IndexedDB usando o idLocal se disponível, ou o ID fornecido
       let preMatriculaIdToUse = selectedPreId;
       
-      // Tentar buscar pelo idLocal primeiro, depois pelo idGlobal, depois pelo id
+      console.log("🔍 Verificando status de sincronização da pré-matrícula:", {
+        selectedPreId,
+        idLocal: selectedPre?.idLocal,
+        idGlobal: selectedPre?.id,
+      });
+      
+      // Tentar buscar pelo idLocal primeiro (mais confiável)
       let preMatriculaLocal = null;
       if (selectedPre?.idLocal) {
         preMatriculaLocal = await db.matriculas.get(selectedPre.idLocal);
+        console.log(`🔍 Busca por idLocal (${selectedPre.idLocal}):`, {
+          encontrada: !!preMatriculaLocal,
+          sync_status: preMatriculaLocal?.sync_status,
+          idGlobal: preMatriculaLocal?.idGlobal,
+        });
       }
       
-      if (!preMatriculaLocal) {
-        // Tentar buscar pelo idGlobal (buscar todos e filtrar, pois idGlobal não é índice)
+      // Se não encontrou por idLocal, tentar buscar pelo idGlobal
+      if (!preMatriculaLocal && selectedPre?.id) {
         const allMatriculas = await db.matriculas.toArray();
-        preMatriculaLocal = allMatriculas.find(m => m.idGlobal === selectedPreId) || null;
+        preMatriculaLocal = allMatriculas.find(m => m.idGlobal === selectedPre.id) || null;
+        console.log(`🔍 Busca por idGlobal (${selectedPre.id}):`, {
+          encontrada: !!preMatriculaLocal,
+          sync_status: preMatriculaLocal?.sync_status,
+          idLocal: preMatriculaLocal?.id,
+        });
       }
       
+      // Se ainda não encontrou, tentar buscar pelo ID direto (pode ser idLocal ou idGlobal)
       if (!preMatriculaLocal) {
-        // Tentar buscar pelo id direto
         preMatriculaLocal = await db.matriculas.get(selectedPreId);
+        console.log(`🔍 Busca por ID direto (${selectedPreId}):`, {
+          encontrada: !!preMatriculaLocal,
+          sync_status: preMatriculaLocal?.sync_status,
+          idGlobal: preMatriculaLocal?.idGlobal,
+        });
       }
 
+      // Se não encontrou localmente, assumir que está apenas no servidor (já sincronizada)
       if (!preMatriculaLocal) {
-        // Se não encontrou localmente, pode estar apenas no servidor
-        console.log("⚠️ Pré-matrícula não encontrada localmente, assumindo que está sincronizada");
+        console.log("⚠️ Pré-matrícula não encontrada localmente, assumindo que está sincronizada no servidor");
+        // Usar o ID fornecido diretamente (pode ser idGlobal do servidor)
+        preMatriculaIdToUse = selectedPreId;
       } else if (preMatriculaLocal.sync_status !== "synced") {
         // Pré-matrícula não está sincronizada, tentar sincronizar
         console.log("🔄 Pré-matrícula não sincronizada, tentando sincronizar...");
@@ -351,6 +374,7 @@ export default function NovaMatriculaPage() {
           }
 
           // Atualizar o ID para usar o ID global sincronizado
+          // Priorizar idGlobal, depois o id direto
           if (preMatriculaAtualizada?.idGlobal) {
             preMatriculaIdToUse = preMatriculaAtualizada.idGlobal;
             console.log(`✅ Pré-matrícula sincronizada! Usando ID global: ${preMatriculaIdToUse}`);
@@ -358,6 +382,10 @@ export default function NovaMatriculaPage() {
             // Se não tem idGlobal, usar o id direto (pode ser que já seja o ID global)
             preMatriculaIdToUse = preMatriculaAtualizada.id;
             console.log(`✅ Usando ID da matrícula: ${preMatriculaIdToUse}`);
+          } else {
+            // Fallback: usar o ID original
+            console.warn(`⚠️ Não foi possível determinar ID global, usando ID original: ${selectedPreId}`);
+            preMatriculaIdToUse = selectedPreId;
           }
         } catch (syncError: any) {
           console.error("❌ Erro ao sincronizar:", syncError);
@@ -384,8 +412,24 @@ export default function NovaMatriculaPage() {
         if (preMatriculaLocal.idGlobal) {
           preMatriculaIdToUse = preMatriculaLocal.idGlobal;
           console.log(`✅ Pré-matrícula já sincronizada. Usando ID global: ${preMatriculaIdToUse}`);
+        } else {
+          // Se não tem idGlobal mas está sincronizada, pode ser que o id já seja o global
+          // Tentar usar o id direto, mas logar aviso
+          console.warn(`⚠️ Pré-matrícula sincronizada mas sem idGlobal. Usando ID: ${preMatriculaLocal.id}`);
+          preMatriculaIdToUse = preMatriculaLocal.id;
         }
       }
+
+      // Validação final: garantir que temos um ID válido
+      if (!preMatriculaIdToUse) {
+        throw new Error("Não foi possível determinar o ID da pré-matrícula para conversão");
+      }
+
+      console.log(`🎯 ID final para conversão: ${preMatriculaIdToUse}`, {
+        idOriginal: selectedPreId,
+        idLocal: selectedPre?.idLocal,
+        idGlobal: preMatriculaLocal?.idGlobal,
+      });
 
       const payload = {
         turmaId: turmaId || null,
@@ -638,3 +682,4 @@ export default function NovaMatriculaPage() {
     </div>
   );
 }
+

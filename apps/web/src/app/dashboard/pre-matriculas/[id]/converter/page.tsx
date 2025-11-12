@@ -194,10 +194,27 @@ export default function ConverterPreMatriculaPage() {
         throw new Error("Esta operação só pode ser executada no navegador");
       }
       
-      // Verificar se a pré-matrícula está pendente de sincronização
-      const localMatricula = await db.matriculas.get(preId);
+      // Verificar se a pré-matrícula está pendente de sincronização e obter o ID global correto
+      console.log("🔍 Verificando status de sincronização da pré-matrícula:", {
+        preId,
+      });
+      
+      let localMatricula = await db.matriculas.get(preId);
+      
+      // Se não encontrou pelo ID direto, tentar buscar pelo idGlobal
+      if (!localMatricula) {
+        const allMatriculas = await db.matriculas.toArray();
+        localMatricula = allMatriculas.find(m => m.idGlobal === preId) || null;
+        console.log(`🔍 Busca por idGlobal (${preId}):`, {
+          encontrada: !!localMatricula,
+          sync_status: localMatricula?.sync_status,
+          idLocal: localMatricula?.id,
+        });
+      }
+      
       let matriculaIdToUse = preId;
       
+      // Se encontrou localmente e está pendente, sincronizar
       if (localMatricula && localMatricula.sync_status === "pending") {
         // Precisa sincronizar primeiro
         if (!isOnline()) {
@@ -205,30 +222,84 @@ export default function ConverterPreMatriculaPage() {
         }
         
         toast.info("Sincronizando pré-matrícula antes de converter...");
+        console.log("🔄 Iniciando sincronização antes de converter...");
         
         // Sincronizar operações pendentes
         const syncResult = await syncPendingOperations();
         
-        if (syncResult.failed > 0) {
+        console.log(`📊 Resultado da sincronização:`, {
+          success: syncResult.success,
+          failed: syncResult.failed,
+        });
+        
+        if (syncResult.failed > 0 && syncResult.success === 0) {
           throw new Error("Erro ao sincronizar pré-matrícula. Tente novamente.");
         }
         
-        // Aguardar um pouco para garantir que a reconciliação foi feita
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        // Aguardar um pouco mais para garantir que a reconciliação foi concluída
+        await new Promise((resolve) => setTimeout(resolve, 2000));
         
         // Buscar a matrícula atualizada para obter o ID global
-        const updatedMatricula = await db.matriculas.get(preId);
+        // Tentar buscar pelo idLocal primeiro
+        let updatedMatricula = null;
+        if (localMatricula.id) {
+          updatedMatricula = await db.matriculas.get(localMatricula.id);
+        }
+        
+        // Se não encontrou, tentar buscar pelo idGlobal
+        if (!updatedMatricula && localMatricula.idGlobal) {
+          const allMatriculas = await db.matriculas.toArray();
+          updatedMatricula = allMatriculas.find(m => m.idGlobal === localMatricula.idGlobal) || null;
+        }
+        
+        console.log(`🔍 Matrícula após sincronização:`, {
+          encontrada: !!updatedMatricula,
+          idLocal: updatedMatricula?.id,
+          idGlobal: updatedMatricula?.idGlobal,
+          sync_status: updatedMatricula?.sync_status,
+        });
+        
         if (updatedMatricula?.idGlobal) {
           matriculaIdToUse = updatedMatricula.idGlobal;
+          console.log(`✅ Usando ID global após sincronização: ${matriculaIdToUse}`);
         } else if (updatedMatricula?.sync_status === "synced") {
           // Se foi sincronizada mas não tem idGlobal, usar o id local mesmo
           // O servidor pode ter retornado o mesmo ID
+          matriculaIdToUse = updatedMatricula.id || preId;
+          console.log(`⚠️ Sincronizada mas sem idGlobal, usando ID: ${matriculaIdToUse}`);
+        } else {
+          // Fallback: usar o ID original
+          console.warn(`⚠️ Não foi possível determinar ID global após sincronização, usando ID original: ${preId}`);
           matriculaIdToUse = preId;
         }
         
         // Refetch para garantir que temos os dados atualizados
         await refetchPre();
+      } else if (localMatricula && localMatricula.sync_status === "synced") {
+        // Já está sincronizada, usar o idGlobal se disponível
+        if (localMatricula.idGlobal) {
+          matriculaIdToUse = localMatricula.idGlobal;
+          console.log(`✅ Pré-matrícula já sincronizada. Usando ID global: ${matriculaIdToUse}`);
+        } else {
+          console.warn(`⚠️ Pré-matrícula sincronizada mas sem idGlobal. Usando ID: ${localMatricula.id}`);
+          matriculaIdToUse = localMatricula.id || preId;
+        }
+      } else {
+        // Não encontrou localmente ou status desconhecido, assumir que está no servidor
+        console.log("⚠️ Pré-matrícula não encontrada localmente, assumindo que está sincronizada no servidor");
+        matriculaIdToUse = preId;
       }
+      
+      // Validação final
+      if (!matriculaIdToUse) {
+        throw new Error("Não foi possível determinar o ID da pré-matrícula para conversão");
+      }
+      
+      console.log(`🎯 ID final para conversão: ${matriculaIdToUse}`, {
+        idOriginal: preId,
+        idLocal: localMatricula?.id,
+        idGlobal: localMatricula?.idGlobal,
+      });
       
       // Usar a rota correta: /api/pre-matriculas/:id/converter
       const response = await apiClient.post(
