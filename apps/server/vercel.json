@@ -5,7 +5,8 @@
       "src": "api/index.js",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["dist/**", "../../packages/db/dist/**"]
+        "includeFiles": ["dist/**", "../../packages/db/dist/**"],
+        "maxDuration": 30
       }
     }
   ],
@@ -17,10 +18,5 @@
   ],
   "env": {
     "NODE_ENV": "production"
-  },
-  "functions": {
-    "api/index.js": {
-      "maxDuration": 30
-    }
   }
 }
