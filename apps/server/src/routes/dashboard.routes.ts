@@ -9,6 +9,7 @@ import {
   getTurmas,
   getTurmaDetalhes,
   transferirAluno,
+  getPreMatriculaById,
 } from "../controllers/dashboard.controller.js";
 import { authenticateToken } from "../middlewares/auth.middleware.js";
 
@@ -37,6 +38,10 @@ router.get(
 router.get(
   "/api/pre-matriculas",
   matriculaController.getMatriculas.bind(matriculaController)
+);
+router.get(
+  "/api/pre-matriculas/:id",
+  getPreMatriculaById
 );
 router.post(
   "/api/pre-matriculas",
