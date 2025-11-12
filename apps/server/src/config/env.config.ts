@@ -112,6 +112,13 @@ function validateEnv() {
       console.error("📝 Crie o arquivo apps/server/.env com as variáveis necessárias.");
       console.error("   Veja apps/server/.env.example para referência.");
       console.error("");
+      console.error("📖 Para instruções detalhadas, consulte: apps/server/DEV_SETUP.md");
+      console.error("");
+      console.error("🔧 Passos rápidos:");
+      console.error("   1. Copie o arquivo de exemplo: cp apps/server/env.example apps/server/.env");
+      console.error("   2. Configure DATABASE_URL com sua connection string do Supabase ou PostgreSQL");
+      console.error("   3. Gere JWT_SECRET: openssl rand -base64 32");
+      console.error("");
     }
     process.exit(1);
   }

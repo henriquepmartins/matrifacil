@@ -16,8 +16,11 @@ import {
 import { Separator } from "@/components/ui/separator";
 import SyncIndicator from "@/components/sync-indicator";
 import { AppSidebar } from "@/components/app-sidebar";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { NetworkStatusIndicator } from "@/components/network-status-indicator";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { useEffect } from "react";
+import Loader from "@/components/loader";
 
 function getBreadcrumbItems(pathname: string) {
   const segments = pathname.split("/").filter(Boolean);
@@ -105,6 +108,36 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const { user, isLoading, isAuthenticated } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Proteção de autenticação no layout
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated && !user) {
+      console.log("🔒 Usuário não autenticado, redirecionando para login...");
+      router.push(`/login?redirect=${encodeURIComponent(pathname)}` as any);
+    }
+  }, [user, isLoading, isAuthenticated, router, pathname]);
+
+  // Mostra loader enquanto verifica autenticação
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader />
+      </div>
+    );
+  }
+
+  // Se não estiver autenticado, não renderiza nada (redirecionamento em andamento)
+  if (!isAuthenticated || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader />
+      </div>
+    );
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar />

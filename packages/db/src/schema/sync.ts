@@ -34,14 +34,10 @@ export const syncLog = pgTable("sync_log", {
 
 export const syncConflict = pgTable("sync_conflict", {
   id: text("id").primaryKey(),
-  userId: text("user_id").notNull(),
+  batchId: text("batch_id").notNull(),
   entity: text("entity").notNull(),
-  localId: text("local_id").notNull(),
-  globalId: text("global_id").notNull(),
-  localData: jsonb("local_data").notNull(),
-  serverData: jsonb("server_data").notNull(),
-  resolved: boolean("resolved").notNull().default(false),
-  resolvedData: jsonb("resolved_data"),
+  idLocal: text("local_id").notNull(),
+  error: text("error"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

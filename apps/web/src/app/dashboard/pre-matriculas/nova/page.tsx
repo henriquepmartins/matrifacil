@@ -25,6 +25,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { isOnline } from "@/lib/utils/network";
 import { savePreMatriculaOffline } from "@/lib/services/pre-matricula-offline.service";
+import { db } from "@/lib/db";
 
 const preMatriculaSchema = z.object({
   aluno: z.object({
@@ -141,10 +142,24 @@ export default function NovaPreMatriculaPage() {
           observacoes: data.observacoes,
         });
         console.log("✅ Salvo no IndexedDB com sucesso", result);
-        toast.success(
-          `Pré-matrícula salva localmente! Protocolo: ${result.protocoloLocal}. Será sincronizada quando houver conexão.`,
-          { duration: 5000 }
-        );
+        
+        // A sincronização automática já foi tentada no savePreMatriculaOffline
+        // Verificar se foi sincronizada checando o status após um pequeno delay
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const matriculaAtualizada = await db.matriculas.get(result.matriculaId);
+        const foiSincronizada = matriculaAtualizada?.sync_status === "synced";
+        
+        if (foiSincronizada) {
+          toast.success(
+            `Pré-matrícula criada e sincronizada com sucesso! Protocolo: ${result.protocoloLocal}`,
+            { duration: 5000 }
+          );
+        } else {
+          toast.success(
+            `Pré-matrícula salva localmente! Protocolo: ${result.protocoloLocal}. Será sincronizada quando houver conexão.`,
+            { duration: 5000 }
+          );
+        }
 
         // Atualizar o cache diretamente com os dados da pré-matrícula criada
         if (result.preMatriculaCriada) {

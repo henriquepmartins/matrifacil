@@ -23,18 +23,24 @@ export function startSyncWorker() {
       const { payload, userId, batchId } = job.data;
 
       console.log(
-        `🔧 Processando lote ${batchId} com ${payload.batch.length} itens`
+        `🔧 [Worker] Processando lote ${batchId} com ${payload.batch.length} itens para userId: ${userId}`
       );
 
       try {
-        // Processar lote
+        // Processar lote (já atualiza cache e logs internamente)
         const result = await syncService.processBatch(payload, userId);
 
-        console.log(`✅ Lote ${batchId} processado com sucesso`);
+        console.log(
+          `✅ [Worker] Lote ${batchId} processado: ${result.mappings.length} sucessos, ${result.conflicts.length} conflitos`
+        );
 
         return result;
       } catch (error: any) {
-        console.error(`❌ Erro ao processar lote ${batchId}:`, error);
+        console.error(`❌ [Worker] Erro ao processar lote ${batchId}:`, error);
+        console.error("Stack trace:", error?.stack);
+        
+        // O syncService já trata o erro e atualiza o cache, mas vamos garantir
+        // que o erro seja propagado para o BullMQ fazer retry se necessário
         throw error;
       }
     },

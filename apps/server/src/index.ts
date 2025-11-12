@@ -1,3 +1,4 @@
+// MatriFácil Server - v1.0.1 - Fixed Supabase pooler connection
 import { createApp } from "./app.js";
 import { env } from "./config/env.config.js";
 import { initializeDatabase } from "./infrastructure/database/database.config.js";

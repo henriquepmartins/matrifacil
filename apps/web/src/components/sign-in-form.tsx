@@ -8,7 +8,8 @@ import Loader from "./loader";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 
 export default function SignInForm({
   onSwitchToSignUp,
@@ -16,7 +17,16 @@ export default function SignInForm({
   onSwitchToSignUp: () => void;
 }) {
   const router = useRouter();
-  const { signIn, isLoading } = useAuth();
+  const searchParams = useSearchParams();
+  const { signIn, isLoading, isAuthenticated } = useAuth();
+
+  // Redireciona se já estiver autenticado
+  useEffect(() => {
+    if (isAuthenticated) {
+      const redirect = searchParams.get("redirect") || "/dashboard";
+      router.push(redirect as any);
+    }
+  }, [isAuthenticated, router, searchParams]);
 
   const form = useForm({
     defaultValues: {
@@ -26,7 +36,8 @@ export default function SignInForm({
     onSubmit: async ({ value }) => {
       try {
         await signIn(value.email, value.password);
-        router.push("/dashboard");
+        const redirect = searchParams.get("redirect") || "/dashboard";
+        router.push(redirect as any);
         toast.success("Login realizado com sucesso");
       } catch (error: any) {
         toast.error(error?.message || "Erro ao fazer login");

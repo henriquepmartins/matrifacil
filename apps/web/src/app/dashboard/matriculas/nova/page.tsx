@@ -22,9 +22,12 @@ import { apiClient } from "@/lib/api-client";
 import { isOnline } from "@/lib/utils/network";
 import { getAllPreMatriculas } from "@/lib/services/pre-matricula-cache.service";
 import { cachePreMatriculasFromServer } from "@/lib/services/pre-matricula-cache.service";
+import { db } from "@/lib/db";
+import { syncPendingOperations } from "@/lib/db/sync";
 
 type PreResumo = {
   id: string;
+  idLocal?: string; // ID local do IndexedDB (para pré-matrículas criadas offline)
   protocoloLocal: string;
   aluno: { nome: string; etapa: string; necessidadesEspeciais: boolean };
   responsavel: { nome: string };
@@ -97,20 +100,38 @@ export default function NovaMatriculaPage() {
       );
 
       // Converter para o formato esperado
-      const result = filtered.map((item: any) => ({
-        id: item.id, // Já prioriza ID global nos serviços de cache
-        idLocal: item.idLocal, // Manter referência ao ID local se necessário
-        protocoloLocal: item.protocoloLocal,
-        aluno: {
-          nome: item.aluno?.nome || "",
-          etapa: item.aluno?.etapa || "",
-          necessidadesEspeciais: item.aluno?.necessidadesEspeciais || false,
-        },
-        responsavel: {
-          nome: item.responsavel?.nome || "",
-        },
-        createdAt: item.createdAt,
-      }));
+      const result = filtered.map((item: any) => {
+        // Verificar se aluno e responsável existem
+        if (!item.aluno || !item.responsavel) {
+          console.warn(`⚠️ Pré-matrícula ${item.id} com dados incompletos:`, {
+            temAluno: !!item.aluno,
+            temResponsavel: !!item.responsavel,
+            sync_status: item.sync_status,
+          });
+        }
+
+        return {
+          id: item.id, // Já prioriza ID global nos serviços de cache
+          idLocal: item.idLocal, // Manter referência ao ID local se necessário
+          protocoloLocal: item.protocoloLocal,
+          aluno: {
+            nome: item.aluno?.nome || "",
+            etapa: item.aluno?.etapa || "",
+            necessidadesEspeciais: item.aluno?.necessidadesEspeciais || false,
+          },
+          responsavel: {
+            nome: item.responsavel?.nome || "",
+          },
+          createdAt: item.createdAt,
+        };
+      }).filter(item => {
+        // Filtrar pré-matrículas sem dados completos
+        if (!item.aluno?.etapa) {
+          console.warn(`⚠️ Pré-matrícula ${item.id} sem etapa do aluno, removendo da lista`);
+          return false;
+        }
+        return true;
+      });
 
       // Debug: Mostrar IDs para verificar se estão corretos
       console.log(
@@ -141,14 +162,17 @@ export default function NovaMatriculaPage() {
       if (turnoFiltro !== "todos") params.set("turno", turnoFiltro);
       params.set("limit", "20");
       try {
+        console.log("🔍 Buscando turmas com filtros:", { etapaFiltro, turnoFiltro });
         const result = await apiClient.get(`/api/turmas?${params}`);
-        return ((result as any).data || []) as TurmaResumo[];
+        const turmas = ((result as any).data || []) as TurmaResumo[];
+        console.log(`✅ ${turmas.length} turmas encontradas`);
+        return turmas;
       } catch (error) {
-        console.error("Erro ao buscar turmas:", error);
+        console.error("❌ Erro ao buscar turmas:", error);
         return [];
       }
     },
-    enabled: !!selectedPreId,
+    enabled: !!selectedPreId && !!selectedPre?.aluno?.etapa && etapaFiltro !== "todos",
   });
 
   const criarMatricula = useMutation({
@@ -169,6 +193,200 @@ export default function NovaMatriculaPage() {
         documentosIniciais: docsSelecionados,
       });
 
+      // Verificar se a pré-matrícula está sincronizada
+      // Buscar no IndexedDB usando o idLocal se disponível, ou o ID fornecido
+      let preMatriculaIdToUse = selectedPreId;
+      
+      // Tentar buscar pelo idLocal primeiro, depois pelo idGlobal, depois pelo id
+      let preMatriculaLocal = null;
+      if (selectedPre?.idLocal) {
+        preMatriculaLocal = await db.matriculas.get(selectedPre.idLocal);
+      }
+      
+      if (!preMatriculaLocal) {
+        // Tentar buscar pelo idGlobal (buscar todos e filtrar, pois idGlobal não é índice)
+        const allMatriculas = await db.matriculas.toArray();
+        preMatriculaLocal = allMatriculas.find(m => m.idGlobal === selectedPreId) || null;
+      }
+      
+      if (!preMatriculaLocal) {
+        // Tentar buscar pelo id direto
+        preMatriculaLocal = await db.matriculas.get(selectedPreId);
+      }
+
+      if (!preMatriculaLocal) {
+        // Se não encontrou localmente, pode estar apenas no servidor
+        console.log("⚠️ Pré-matrícula não encontrada localmente, assumindo que está sincronizada");
+      } else if (preMatriculaLocal.sync_status !== "synced") {
+        // Pré-matrícula não está sincronizada, tentar sincronizar
+        console.log("🔄 Pré-matrícula não sincronizada, tentando sincronizar...");
+        
+        if (!isOnline()) {
+          throw new Error(
+            "A pré-matrícula selecionada ainda não foi sincronizada com o servidor. " +
+            "Por favor, aguarde a sincronização automática ou conecte-se à internet."
+          );
+        }
+
+        // Tentar sincronizar
+        try {
+          console.log("🔄 Iniciando sincronização...");
+          const syncResult = await syncPendingOperations();
+          
+          console.log(`📊 Resultado da sincronização:`, {
+            success: syncResult.success,
+            failed: syncResult.failed,
+            preMatriculaIdLocal: selectedPre?.idLocal,
+            preMatriculaId: selectedPreId,
+          });
+
+          if (syncResult.failed > 0) {
+            console.warn(`⚠️ ${syncResult.failed} item(s) falharam na sincronização`);
+          }
+
+          // Aguardar um pouco mais para garantir que a reconciliação foi concluída
+          // Se o processamento foi assíncrono, pode levar mais tempo
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          
+          // Buscar novamente para verificar se foi sincronizada
+          // Tentar buscar pelo idLocal primeiro, depois pelo idGlobal, depois pelo id
+          let preMatriculaAtualizada = null;
+          if (selectedPre?.idLocal) {
+            preMatriculaAtualizada = await db.matriculas.get(selectedPre.idLocal);
+            console.log(`🔍 Busca por idLocal (${selectedPre.idLocal}):`, {
+              encontrada: !!preMatriculaAtualizada,
+              sync_status: preMatriculaAtualizada?.sync_status,
+              idGlobal: preMatriculaAtualizada?.idGlobal,
+            });
+          }
+          
+          if (!preMatriculaAtualizada) {
+            // Tentar buscar pelo idGlobal (buscar todos e filtrar, pois idGlobal não é índice)
+            const allMatriculas = await db.matriculas.toArray();
+            preMatriculaAtualizada = allMatriculas.find(m => m.idGlobal === selectedPreId) || null;
+            console.log(`🔍 Busca por idGlobal (${selectedPreId}):`, {
+              encontrada: !!preMatriculaAtualizada,
+              sync_status: preMatriculaAtualizada?.sync_status,
+            });
+          }
+          
+          if (!preMatriculaAtualizada) {
+            // Tentar buscar pelo id direto
+            preMatriculaAtualizada = await db.matriculas.get(selectedPreId);
+            console.log(`🔍 Busca por id direto (${selectedPreId}):`, {
+              encontrada: !!preMatriculaAtualizada,
+              sync_status: preMatriculaAtualizada?.sync_status,
+            });
+          }
+
+          // Se ainda não encontrou ou não está sincronizada, verificar se foi sincronizada parcialmente
+          if (!preMatriculaAtualizada || preMatriculaAtualizada.sync_status !== "synced") {
+            // Verificar se há alguma matrícula com o mesmo protocolo que foi sincronizada
+            if (preMatriculaLocal?.protocoloLocal) {
+              const allMatriculas = await db.matriculas.toArray();
+              const matriculaSincronizada = allMatriculas.find(
+                m => m.protocoloLocal === preMatriculaLocal.protocoloLocal && 
+                     m.sync_status === "synced"
+              );
+              
+              if (matriculaSincronizada) {
+                console.log(`✅ Encontrada matrícula sincronizada com mesmo protocolo:`, {
+                  idLocal: matriculaSincronizada.id,
+                  idGlobal: matriculaSincronizada.idGlobal,
+                });
+                preMatriculaAtualizada = matriculaSincronizada;
+              }
+            }
+
+            if (!preMatriculaAtualizada || preMatriculaAtualizada.sync_status !== "synced") {
+              // Se sincronizou com sucesso mas a matrícula não foi encontrada, tentar buscar do servidor
+              if (syncResult.success > 0) {
+                console.log("🔄 Matrícula pode ter sido sincronizada, mas não encontrada localmente. Tentando buscar do servidor...");
+                
+                try {
+                  // Tentar buscar do servidor usando o ID que foi selecionado
+                  const serverPre = await apiClient.get(`/api/pre-matriculas/${selectedPreId}`);
+                  
+                  if (serverPre && (serverPre as any).data) {
+                    console.log("✅ Pré-matrícula encontrada no servidor! Atualizando cache local...");
+                    // Atualizar cache local com os dados do servidor
+                    await cachePreMatriculasFromServer();
+                    
+                    // Buscar novamente após atualizar o cache
+                    const allMatriculas = await db.matriculas.toArray();
+                    preMatriculaAtualizada = allMatriculas.find(
+                      m => m.idGlobal === selectedPreId || m.id === selectedPreId
+                    ) || null;
+                    
+                    if (preMatriculaAtualizada && preMatriculaAtualizada.sync_status === "synced") {
+                      console.log("✅ Pré-matrícula encontrada e sincronizada após buscar do servidor!");
+                    } else {
+                      // Se ainda não encontrou, usar o ID do servidor diretamente
+                      preMatriculaIdToUse = selectedPreId;
+                      console.log("⚠️ Usando ID do servidor diretamente:", preMatriculaIdToUse);
+                    }
+                  } else {
+                    throw new Error("Pré-matrícula não encontrada no servidor");
+                  }
+                } catch (serverError: any) {
+                  console.warn("⚠️ Erro ao buscar do servidor:", serverError);
+                  // Se não conseguiu buscar do servidor, mas sincronizou com sucesso, usar o ID diretamente
+                  if (syncResult.success > 0) {
+                    console.log("⚠️ Usando ID diretamente, assumindo que foi sincronizado:", selectedPreId);
+                    preMatriculaIdToUse = selectedPreId;
+                  } else {
+                    throw new Error(
+                      "Não foi possível sincronizar a pré-matrícula. " +
+                      "Por favor, aguarde alguns instantes e tente novamente."
+                    );
+                  }
+                }
+              } else {
+                throw new Error(
+                  "Não foi possível sincronizar a pré-matrícula. " +
+                  "Por favor, aguarde alguns instantes e tente novamente."
+                );
+              }
+            }
+          }
+
+          // Atualizar o ID para usar o ID global sincronizado
+          if (preMatriculaAtualizada?.idGlobal) {
+            preMatriculaIdToUse = preMatriculaAtualizada.idGlobal;
+            console.log(`✅ Pré-matrícula sincronizada! Usando ID global: ${preMatriculaIdToUse}`);
+          } else if (preMatriculaAtualizada?.id) {
+            // Se não tem idGlobal, usar o id direto (pode ser que já seja o ID global)
+            preMatriculaIdToUse = preMatriculaAtualizada.id;
+            console.log(`✅ Usando ID da matrícula: ${preMatriculaIdToUse}`);
+          }
+        } catch (syncError: any) {
+          console.error("❌ Erro ao sincronizar:", syncError);
+          
+          // Mensagem de erro mais amigável
+          let errorMessage = "Erro ao sincronizar pré-matrícula.";
+          
+          if (syncError.message) {
+            if (syncError.message.includes("Timeout")) {
+              errorMessage = "A sincronização está demorando mais que o esperado. Por favor, aguarde alguns instantes e tente novamente.";
+            } else if (syncError.message.includes("SERVER_OFFLINE") || syncError.message.includes("Failed to fetch")) {
+              errorMessage = "Não foi possível conectar ao servidor. Verifique sua conexão com a internet e tente novamente.";
+            } else if (syncError.message.includes("Erro interno do servidor")) {
+              errorMessage = "Ocorreu um erro no servidor ao processar a sincronização. Por favor, tente novamente em alguns instantes.";
+            } else {
+              errorMessage = `Erro ao sincronizar: ${syncError.message}`;
+            }
+          }
+          
+          throw new Error(errorMessage);
+        }
+      } else {
+        // Pré-matrícula está sincronizada, usar o ID global se disponível
+        if (preMatriculaLocal.idGlobal) {
+          preMatriculaIdToUse = preMatriculaLocal.idGlobal;
+          console.log(`✅ Pré-matrícula já sincronizada. Usando ID global: ${preMatriculaIdToUse}`);
+        }
+      }
+
       const payload = {
         turmaId: turmaId || null,
         dataMatricula,
@@ -177,10 +395,11 @@ export default function NovaMatriculaPage() {
       };
 
       console.log("📦 Payload:", payload);
+      console.log("📤 Enviando para:", `/api/pre-matriculas/${preMatriculaIdToUse}/converter`);
 
       try {
         const result = await apiClient.post(
-          `/api/pre-matriculas/${selectedPreId}/converter`,
+          `/api/pre-matriculas/${preMatriculaIdToUse}/converter`,
           payload
         );
         console.log("✅ Matrícula criada:", result);
@@ -191,7 +410,12 @@ export default function NovaMatriculaPage() {
         // Mapear erros específicos para mensagens mais claras
         let errorMessage = error?.message || "Falha ao criar matrícula";
 
-        if (errorMessage.includes("não possui vagas")) {
+        if (errorMessage.includes("não encontrada") || errorMessage.includes("not found")) {
+          errorMessage =
+            "Pré-matrícula não encontrada no servidor. " +
+            "A pré-matrícula pode ainda não ter sido sincronizada. " +
+            "Por favor, aguarde alguns instantes e tente novamente.";
+        } else if (errorMessage.includes("não possui vagas")) {
           errorMessage =
             "A turma selecionada não possui vagas disponíveis. Tente outra turma.";
         } else if (errorMessage.includes("não está ativa")) {
