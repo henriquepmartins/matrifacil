@@ -204,7 +204,7 @@ export default function ConverterPreMatriculaPage() {
       // Se não encontrou pelo ID direto, tentar buscar pelo idGlobal
       if (!localMatricula) {
         const allMatriculas = await db.matriculas.toArray();
-        localMatricula = allMatriculas.find(m => m.idGlobal === preId) || null;
+        localMatricula = allMatriculas.find(m => m.idGlobal === preId) || undefined;
         console.log(`🔍 Busca por idGlobal (${preId}):`, {
           encontrada: !!localMatricula,
           sync_status: localMatricula?.sync_status,
